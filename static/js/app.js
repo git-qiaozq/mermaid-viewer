@@ -274,6 +274,7 @@
         // 导出按钮
         document.getElementById('btn-export-svg').addEventListener('click', () => exportImage('svg'));
         document.getElementById('btn-export-png').addEventListener('click', () => exportImage('png'));
+        document.getElementById('btn-copy').addEventListener('click', copyToClipboard);
 
         // 缩放按钮
         document.getElementById('btn-zoom-in').addEventListener('click', () => adjustZoom(CONFIG.ZOOM_STEP));
@@ -807,6 +808,105 @@
             img.onerror = () => reject(new Error('图片加载失败'));
             img.src = imgSrc;
         });
+    }
+
+    // ========================================
+    // 复制图片到剪贴板
+    // ========================================
+    async function copyToClipboard() {
+        const svgElement = elements.previewContent.querySelector('svg');
+        if (!svgElement) {
+            showToast('没有可复制的图表', 'error');
+            return;
+        }
+
+        try {
+            // 克隆 SVG 以获取完整尺寸
+            const clonedSvg = svgElement.cloneNode(true);
+            
+            // 获取 SVG 的实际尺寸
+            let svgWidth, svgHeight;
+            
+            const viewBox = svgElement.getAttribute('viewBox');
+            if (viewBox) {
+                const parts = viewBox.split(/\s+|,/);
+                svgWidth = parseFloat(parts[2]);
+                svgHeight = parseFloat(parts[3]);
+            }
+            
+            if (!svgWidth || !svgHeight) {
+                const widthAttr = svgElement.getAttribute('width');
+                const heightAttr = svgElement.getAttribute('height');
+                if (widthAttr && heightAttr) {
+                    svgWidth = parseFloat(widthAttr);
+                    svgHeight = parseFloat(heightAttr);
+                }
+            }
+            
+            if (!svgWidth || !svgHeight) {
+                try {
+                    const bbox = svgElement.getBBox();
+                    svgWidth = bbox.width + bbox.x * 2;
+                    svgHeight = bbox.height + bbox.y * 2;
+                } catch (e) {
+                    const rect = svgElement.getBoundingClientRect();
+                    svgWidth = rect.width;
+                    svgHeight = rect.height;
+                }
+            }
+            
+            svgWidth = Math.max(svgWidth, 100);
+            svgHeight = Math.max(svgHeight, 100);
+            
+            clonedSvg.setAttribute('width', svgWidth);
+            clonedSvg.setAttribute('height', svgHeight);
+            clonedSvg.style.backgroundColor = '#0d1117';
+            
+            // 创建 canvas
+            const scale = 2;
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = svgWidth * scale;
+            canvas.height = svgHeight * scale;
+
+            ctx.fillStyle = '#0d1117';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const svgData = new XMLSerializer().serializeToString(clonedSvg);
+            const svgBase64 = btoa(unescape(encodeURIComponent(svgData)));
+            const imgSrc = `data:image/svg+xml;base64,${svgBase64}`;
+
+            const img = new Image();
+            img.onload = async () => {
+                ctx.scale(scale, scale);
+                ctx.drawImage(img, 0, 0, svgWidth, svgHeight);
+
+                canvas.toBlob(async (blob) => {
+                    try {
+                        // 检查剪贴板 API 是否可用
+                        if (!navigator.clipboard || !navigator.clipboard.write) {
+                            throw new Error('浏览器不支持剪贴板 API');
+                        }
+
+                        await navigator.clipboard.write([
+                            new ClipboardItem({ 'image/png': blob })
+                        ]);
+                        showToast('图片已复制到剪贴板', 'success');
+                    } catch (err) {
+                        console.error('复制到剪贴板失败:', err);
+                        showToast('复制失败: ' + err.message, 'error');
+                    }
+                }, 'image/png');
+            };
+            img.onerror = () => {
+                showToast('图片加载失败', 'error');
+            };
+            img.src = imgSrc;
+
+        } catch (error) {
+            console.error('复制到剪贴板失败:', error);
+            showToast('复制失败: ' + error.message, 'error');
+        }
     }
 
     // ========================================

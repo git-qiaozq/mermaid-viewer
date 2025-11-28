@@ -1389,7 +1389,7 @@
             <div class="history-item" data-id="${item.id}">
                 <div class="history-item-header">
                     <span class="history-item-type ${item.type}">${item.type === 'mermaid' ? 'Mermaid' : 'Markdown'}</span>
-                    ${item.title ? `<span class="history-item-title">${escapeHtml(item.title)}</span>` : ''}
+                    <span class="history-item-title editable" data-id="${item.id}" data-source="history" title="点击编辑标题">${item.title ? escapeHtml(item.title) : '<span class="title-placeholder">添加标题</span>'}</span>
                     <span class="history-item-time">${formatTime(item.timestamp)}</span>
                     <div class="history-item-actions">
                         <button class="history-item-favorite ${isFavorited ? 'favorited' : ''}" data-id="${item.id}" title="${isFavorited ? '已收藏' : '添加收藏'}">
@@ -1412,9 +1412,19 @@
         // 绑定点击事件
         elements.historyList.querySelectorAll('.history-item').forEach(item => {
             item.addEventListener('click', (e) => {
-                if (!e.target.closest('.history-item-delete') && !e.target.closest('.history-item-favorite')) {
+                if (!e.target.closest('.history-item-delete') && 
+                    !e.target.closest('.history-item-favorite') &&
+                    !e.target.closest('.history-item-title.editable')) {
                     loadFromHistory(parseInt(item.dataset.id));
                 }
+            });
+        });
+
+        // 绑定标题编辑事件
+        elements.historyList.querySelectorAll('.history-item-title.editable').forEach(titleEl => {
+            titleEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                startInlineEdit(titleEl, 'history');
             });
         });
 
@@ -1532,7 +1542,7 @@
             <div class="history-item favorite-item" data-id="${item.id}">
                 <div class="history-item-header">
                     <span class="history-item-type ${item.type}">${item.type === 'mermaid' ? 'Mermaid' : 'Markdown'}</span>
-                    ${item.title ? `<span class="history-item-title">${escapeHtml(item.title)}</span>` : ''}
+                    <span class="history-item-title editable" data-id="${item.id}" data-source="favorites" title="点击编辑标题">${item.title ? escapeHtml(item.title) : '<span class="title-placeholder">添加标题</span>'}</span>
                     <span class="history-item-time">${formatTime(item.timestamp)}</span>
                     <div class="history-item-actions">
                         <button class="history-item-favorite favorited" data-id="${item.id}" title="取消收藏">
@@ -1555,9 +1565,19 @@
         // 绑定点击事件
         elements.favoritesList.querySelectorAll('.history-item').forEach(item => {
             item.addEventListener('click', (e) => {
-                if (!e.target.closest('.history-item-delete') && !e.target.closest('.history-item-favorite')) {
+                if (!e.target.closest('.history-item-delete') && 
+                    !e.target.closest('.history-item-favorite') &&
+                    !e.target.closest('.history-item-title.editable')) {
                     loadFromFavorites(parseInt(item.dataset.id));
                 }
+            });
+        });
+
+        // 绑定标题编辑事件
+        elements.favoritesList.querySelectorAll('.history-item-title.editable').forEach(titleEl => {
+            titleEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                startInlineEdit(titleEl, 'favorites');
             });
         });
 
@@ -1588,9 +1608,95 @@
         }
     }
 
+    // ========================================
+    // 标题内联编辑
+    // ========================================
+    function startInlineEdit(titleEl, source) {
+        const id = parseInt(titleEl.dataset.id);
+        const item = source === 'history' 
+            ? state.history.find(h => h.id === id)
+            : state.favorites.find(f => f.id === id);
+        
+        if (!item) return;
+
+        const currentTitle = item.title || '';
+        const originalContent = titleEl.innerHTML;
+
+        // 创建输入框
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'title-inline-input';
+        input.value = currentTitle;
+        input.placeholder = '输入标题...';
+        input.maxLength = 50;
+
+        // 替换内容为输入框
+        titleEl.innerHTML = '';
+        titleEl.appendChild(input);
+        titleEl.classList.add('editing');
+
+        // 聚焦并全选
+        input.focus();
+        input.select();
+
+        // 保存函数
+        const saveTitle = () => {
+            const newTitle = input.value.trim();
+            titleEl.classList.remove('editing');
+
+            item.title = newTitle;
+
+            if (source === 'history') {
+                saveHistory();
+                // 同步更新收藏中相同内容的标题
+                const favoriteItem = state.favorites.find(f => f.content === item.content);
+                if (favoriteItem) {
+                    favoriteItem.title = newTitle;
+                    saveFavorites();
+                }
+                renderHistory();
+                renderFavorites();
+            } else {
+                saveFavorites();
+                // 同步更新历史记录中相同内容的标题
+                const historyItem = state.history.find(h => h.content === item.content);
+                if (historyItem) {
+                    historyItem.title = newTitle;
+                    saveHistory();
+                }
+                renderFavorites();
+                renderHistory();
+            }
+        };
+
+        // 取消函数
+        const cancelEdit = () => {
+            titleEl.classList.remove('editing');
+            titleEl.innerHTML = originalContent;
+        };
+
+        // 绑定事件
+        input.addEventListener('blur', saveTitle);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                input.blur();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                input.removeEventListener('blur', saveTitle);
+                cancelEdit();
+            }
+        });
+
+        // 阻止点击事件冒泡
+        input.addEventListener('click', (e) => e.stopPropagation());
+    }
+
     function showFavoriteModal(historyId) {
         state.pendingFavoriteId = historyId;
-        elements.favoriteTitle.value = '';
+        // 预填充历史记录的标题
+        const historyItem = state.history.find(h => h.id === historyId);
+        elements.favoriteTitle.value = historyItem?.title || '';
         elements.favoriteModal.classList.add('open');
         setTimeout(() => elements.favoriteTitle.focus(), 100);
     }
@@ -1638,8 +1744,15 @@
 
         state.favorites.unshift(favoriteItem);
         saveFavorites();
+
+        // 同步更新历史记录的标题
+        if (title) {
+            historyItem.title = title;
+            saveHistory();
+        }
+
         renderFavorites();
-        renderHistory(); // 更新历史列表中的收藏状态
+        renderHistory(); // 更新历史列表中的收藏状态和标题
 
         hideFavoriteModal();
         

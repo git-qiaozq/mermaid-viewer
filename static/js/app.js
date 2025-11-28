@@ -94,6 +94,9 @@
         elements.examplesMenu = document.getElementById('examples-menu');
         elements.helpModal = document.getElementById('help-modal');
 
+        // 初始化主题
+        initTheme();
+
         // 初始化 Mermaid
         initMermaid();
 
@@ -116,77 +119,155 @@
     // ========================================
     // 初始化 Mermaid
     // ========================================
+    
+    // Mermaid 暗黑主题配置
+    const MERMAID_DARK_THEME = {
+        darkMode: true,
+        background: '#0d1117',
+        primaryColor: '#21262d',
+        primaryTextColor: '#e6edf3',
+        primaryBorderColor: '#39d4ff',
+        secondaryColor: '#161b22',
+        secondaryTextColor: '#8b949e',
+        secondaryBorderColor: '#30363d',
+        tertiaryColor: '#21262d',
+        tertiaryTextColor: '#e6edf3',
+        tertiaryBorderColor: '#a371f7',
+        lineColor: '#8b949e',
+        textColor: '#e6edf3',
+        mainBkg: '#21262d',
+        nodeBorder: '#39d4ff',
+        clusterBkg: '#161b22',
+        clusterBorder: '#30363d',
+        titleColor: '#e6edf3',
+        edgeLabelBackground: '#161b22',
+        nodeTextColor: '#e6edf3',
+        actorBorder: '#a371f7',
+        actorBkg: '#21262d',
+        actorTextColor: '#e6edf3',
+        actorLineColor: '#6e7681',
+        signalColor: '#e6edf3',
+        signalTextColor: '#e6edf3',
+        labelBoxBkgColor: '#21262d',
+        labelBoxBorderColor: '#30363d',
+        labelTextColor: '#e6edf3',
+        loopTextColor: '#e6edf3',
+        noteBorderColor: '#f0883e',
+        noteBkgColor: '#21262d',
+        noteTextColor: '#e6edf3',
+        activationBorderColor: '#39d4ff',
+        activationBkgColor: '#39d4ff',
+        sequenceNumberColor: '#0d1117',
+        sectionBkgColor: '#161b22',
+        altSectionBkgColor: '#21262d',
+        sectionBkgColor2: '#161b22',
+        taskBorderColor: '#39d4ff',
+        taskBkgColor: '#21262d',
+        taskTextColor: '#e6edf3',
+        taskTextLightColor: '#e6edf3',
+        taskTextOutsideColor: '#e6edf3',
+        taskTextClickableColor: '#39d4ff',
+        activeTaskBorderColor: '#39d4ff',
+        activeTaskBkgColor: '#39d4ff',
+        gridColor: '#30363d',
+        doneTaskBkgColor: '#3fb950',
+        doneTaskBorderColor: '#3fb950',
+        critBkgColor: '#f85149',
+        critBorderColor: '#f85149',
+        todayLineColor: '#f0883e',
+        pie1: '#39d4ff',
+        pie2: '#a371f7',
+        pie3: '#3fb950',
+        pie4: '#f0883e',
+        pie5: '#f85149',
+        pie6: '#8b949e',
+        pie7: '#58a6ff',
+        pie8: '#d2a8ff',
+        pie9: '#7ee787',
+        pie10: '#ffa657',
+        pie11: '#ff7b72',
+        pie12: '#c9d1d9'
+    };
+
+    // Mermaid 亮色主题配置
+    const MERMAID_LIGHT_THEME = {
+        darkMode: false,
+        background: '#ffffff',
+        primaryColor: '#eaeef2',
+        primaryTextColor: '#1f2328',
+        primaryBorderColor: '#0598bc',
+        secondaryColor: '#f6f8fa',
+        secondaryTextColor: '#59666e',
+        secondaryBorderColor: '#d0d7de',
+        tertiaryColor: '#eaeef2',
+        tertiaryTextColor: '#1f2328',
+        tertiaryBorderColor: '#8250df',
+        lineColor: '#59666e',
+        textColor: '#1f2328',
+        mainBkg: '#eaeef2',
+        nodeBorder: '#0598bc',
+        clusterBkg: '#f6f8fa',
+        clusterBorder: '#d0d7de',
+        titleColor: '#1f2328',
+        edgeLabelBackground: '#f6f8fa',
+        nodeTextColor: '#1f2328',
+        actorBorder: '#8250df',
+        actorBkg: '#eaeef2',
+        actorTextColor: '#1f2328',
+        actorLineColor: '#8c959f',
+        signalColor: '#1f2328',
+        signalTextColor: '#1f2328',
+        labelBoxBkgColor: '#eaeef2',
+        labelBoxBorderColor: '#d0d7de',
+        labelTextColor: '#1f2328',
+        loopTextColor: '#1f2328',
+        noteBorderColor: '#bc4c00',
+        noteBkgColor: '#fff8c5',
+        noteTextColor: '#1f2328',
+        activationBorderColor: '#0598bc',
+        activationBkgColor: '#0598bc',
+        sequenceNumberColor: '#ffffff',
+        sectionBkgColor: '#f6f8fa',
+        altSectionBkgColor: '#eaeef2',
+        sectionBkgColor2: '#f6f8fa',
+        taskBorderColor: '#0598bc',
+        taskBkgColor: '#eaeef2',
+        taskTextColor: '#1f2328',
+        taskTextLightColor: '#1f2328',
+        taskTextOutsideColor: '#1f2328',
+        taskTextClickableColor: '#0969da',
+        activeTaskBorderColor: '#0598bc',
+        activeTaskBkgColor: '#0598bc',
+        gridColor: '#d0d7de',
+        doneTaskBkgColor: '#1a7f37',
+        doneTaskBorderColor: '#1a7f37',
+        critBkgColor: '#cf222e',
+        critBorderColor: '#cf222e',
+        todayLineColor: '#bc4c00',
+        pie1: '#0598bc',
+        pie2: '#8250df',
+        pie3: '#1a7f37',
+        pie4: '#bc4c00',
+        pie5: '#cf222e',
+        pie6: '#8c959f',
+        pie7: '#0969da',
+        pie8: '#a475f9',
+        pie9: '#2da44e',
+        pie10: '#d4a72c',
+        pie11: '#fa4549',
+        pie12: '#59666e'
+    };
+
+    function getMermaidThemeVariables() {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+        return currentTheme === 'dark' ? MERMAID_DARK_THEME : MERMAID_LIGHT_THEME;
+    }
+
     function initMermaid() {
         mermaid.initialize({
             startOnLoad: false,
-            theme: 'dark',
-            themeVariables: {
-                darkMode: true,
-                background: '#0d1117',
-                primaryColor: '#21262d',
-                primaryTextColor: '#e6edf3',
-                primaryBorderColor: '#39d4ff',
-                secondaryColor: '#161b22',
-                secondaryTextColor: '#8b949e',
-                secondaryBorderColor: '#30363d',
-                tertiaryColor: '#21262d',
-                tertiaryTextColor: '#e6edf3',
-                tertiaryBorderColor: '#a371f7',
-                lineColor: '#8b949e',
-                textColor: '#e6edf3',
-                mainBkg: '#21262d',
-                nodeBorder: '#39d4ff',
-                clusterBkg: '#161b22',
-                clusterBorder: '#30363d',
-                titleColor: '#e6edf3',
-                edgeLabelBackground: '#161b22',
-                nodeTextColor: '#e6edf3',
-                actorBorder: '#a371f7',
-                actorBkg: '#21262d',
-                actorTextColor: '#e6edf3',
-                actorLineColor: '#6e7681',
-                signalColor: '#e6edf3',
-                signalTextColor: '#e6edf3',
-                labelBoxBkgColor: '#21262d',
-                labelBoxBorderColor: '#30363d',
-                labelTextColor: '#e6edf3',
-                loopTextColor: '#e6edf3',
-                noteBorderColor: '#f0883e',
-                noteBkgColor: '#21262d',
-                noteTextColor: '#e6edf3',
-                activationBorderColor: '#39d4ff',
-                activationBkgColor: '#39d4ff',
-                sequenceNumberColor: '#0d1117',
-                sectionBkgColor: '#161b22',
-                altSectionBkgColor: '#21262d',
-                sectionBkgColor2: '#161b22',
-                taskBorderColor: '#39d4ff',
-                taskBkgColor: '#21262d',
-                taskTextColor: '#e6edf3',
-                taskTextLightColor: '#e6edf3',
-                taskTextOutsideColor: '#e6edf3',
-                taskTextClickableColor: '#39d4ff',
-                activeTaskBorderColor: '#39d4ff',
-                activeTaskBkgColor: '#39d4ff',
-                gridColor: '#30363d',
-                doneTaskBkgColor: '#3fb950',
-                doneTaskBorderColor: '#3fb950',
-                critBkgColor: '#f85149',
-                critBorderColor: '#f85149',
-                todayLineColor: '#f0883e',
-                pie1: '#39d4ff',
-                pie2: '#a371f7',
-                pie3: '#3fb950',
-                pie4: '#f0883e',
-                pie5: '#f85149',
-                pie6: '#8b949e',
-                pie7: '#58a6ff',
-                pie8: '#d2a8ff',
-                pie9: '#7ee787',
-                pie10: '#ffa657',
-                pie11: '#ff7b72',
-                pie12: '#c9d1d9'
-            },
+            theme: 'base',
+            themeVariables: getMermaidThemeVariables(),
             flowchart: {
                 htmlLabels: true,
                 curve: 'basis',
@@ -307,6 +388,9 @@
         // 帮助面板
         document.getElementById('btn-help').addEventListener('click', showHelpModal);
         document.getElementById('btn-help-close').addEventListener('click', hideHelpModal);
+
+        // 主题切换
+        document.getElementById('btn-theme').addEventListener('click', toggleTheme);
         elements.helpModal.addEventListener('click', (e) => {
             if (e.target.id === 'help-modal') hideHelpModal();
         });
@@ -697,8 +781,9 @@
         // 克隆 SVG
         const clonedSvg = svgElement.cloneNode(true);
 
-        // 添加背景色
-        clonedSvg.style.backgroundColor = '#0d1117';
+        // 添加背景色（根据当前主题）
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+        clonedSvg.style.backgroundColor = currentTheme === 'dark' ? '#0d1117' : '#ffffff';
 
         // 获取 SVG 字符串
         const svgData = new XMLSerializer().serializeToString(clonedSvg);
@@ -768,8 +853,10 @@
         clonedSvg.setAttribute('width', svgWidth);
         clonedSvg.setAttribute('height', svgHeight);
         
-        // 添加背景色
-        clonedSvg.style.backgroundColor = '#0d1117';
+        // 添加背景色（根据当前主题）
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+        const bgColor = currentTheme === 'dark' ? '#0d1117' : '#ffffff';
+        clonedSvg.style.backgroundColor = bgColor;
         
         // 创建 canvas
         const scale = 2; // 高清导出
@@ -778,8 +865,8 @@
         canvas.width = svgWidth * scale;
         canvas.height = svgHeight * scale;
 
-        // 设置背景色
-        ctx.fillStyle = '#0d1117';
+        // 设置背景色（根据当前主题）
+        ctx.fillStyle = bgColor;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         // 将 SVG 转换为图片
@@ -864,7 +951,11 @@
             
             clonedSvg.setAttribute('width', svgWidth);
             clonedSvg.setAttribute('height', svgHeight);
-            clonedSvg.style.backgroundColor = '#0d1117';
+            
+            // 背景色（根据当前主题）
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            const bgColor = currentTheme === 'dark' ? '#0d1117' : '#ffffff';
+            clonedSvg.style.backgroundColor = bgColor;
             
             // 创建 canvas
             const scale = 2;
@@ -873,7 +964,7 @@
             canvas.width = svgWidth * scale;
             canvas.height = svgHeight * scale;
 
-            ctx.fillStyle = '#0d1117';
+            ctx.fillStyle = bgColor;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             const svgData = new XMLSerializer().serializeToString(clonedSvg);
@@ -1359,6 +1450,43 @@
 
     function hideHelpModal() {
         elements.helpModal.classList.remove('open');
+    }
+
+    // ========================================
+    // 主题切换
+    // ========================================
+    function initTheme() {
+        // 从 localStorage 读取保存的主题
+        const savedTheme = localStorage.getItem('mermaid-viewer-theme');
+        if (savedTheme) {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        } else {
+            // 检测系统主题偏好
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+        }
+    }
+
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('mermaid-viewer-theme', newTheme);
+        
+        // 重新初始化 Mermaid 以应用新主题
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: getMermaidThemeVariables()
+        });
+        
+        showToast(newTheme === 'dark' ? '已切换到暗黑模式' : '已切换到亮色模式', 'success');
+        
+        // 如果有图表，重新渲染以适应新主题
+        if (elements.codeInput.value.trim()) {
+            handleInputChange();
+        }
     }
 
     async function shutdownServer() {

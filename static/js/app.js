@@ -45,7 +45,11 @@
         // 平移相关状态
         isPanning: false,
         panStart: { x: 0, y: 0 },
-        panOffset: { x: 0, y: 0 }
+        panOffset: { x: 0, y: 0 },
+        // 触摸相关状态
+        isTouching: false,
+        touchStartDistance: 0,
+        touchStartZoom: 1
     };
 
     // ========================================
@@ -1052,6 +1056,92 @@
                 elements.previewWrapper.classList.remove('panning');
             }
         });
+
+        // ========================================
+        // 触摸事件支持
+        // ========================================
+        
+        // 触摸开始
+        wrapper.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                // 单指：开始拖拽
+                state.isTouching = true;
+                state.isPanning = true;
+                state.panStart = {
+                    x: e.touches[0].clientX - state.panOffset.x,
+                    y: e.touches[0].clientY - state.panOffset.y
+                };
+                wrapper.classList.add('panning');
+            } else if (e.touches.length === 2) {
+                // 双指：开始缩放
+                state.isTouching = true;
+                state.touchStartDistance = getTouchDistance(e.touches);
+                state.touchStartZoom = state.currentZoom;
+                state.isPanning = false;
+                wrapper.classList.remove('panning');
+            }
+            e.preventDefault();
+        }, { passive: false });
+
+        // 触摸移动
+        wrapper.addEventListener('touchmove', (e) => {
+            if (!state.isTouching) return;
+
+            if (e.touches.length === 1 && state.isPanning) {
+                // 单指拖拽
+                state.panOffset = {
+                    x: e.touches[0].clientX - state.panStart.x,
+                    y: e.touches[0].clientY - state.panStart.y
+                };
+                applyTransform();
+            } else if (e.touches.length === 2) {
+                // 双指缩放
+                const currentDistance = getTouchDistance(e.touches);
+                const scale = currentDistance / state.touchStartDistance;
+                let newZoom = state.touchStartZoom * scale;
+                
+                // 限制缩放范围
+                newZoom = Math.max(CONFIG.ZOOM_MIN, Math.min(CONFIG.ZOOM_MAX, newZoom));
+                
+                state.currentZoom = newZoom;
+                applyTransform();
+                elements.zoomLevel.textContent = `${Math.round(state.currentZoom * 100)}%`;
+            }
+            e.preventDefault();
+        }, { passive: false });
+
+        // 触摸结束
+        wrapper.addEventListener('touchend', (e) => {
+            if (e.touches.length === 0) {
+                state.isTouching = false;
+                state.isPanning = false;
+                wrapper.classList.remove('panning');
+            } else if (e.touches.length === 1) {
+                // 从双指变为单指，重新开始拖拽
+                state.isPanning = true;
+                state.panStart = {
+                    x: e.touches[0].clientX - state.panOffset.x,
+                    y: e.touches[0].clientY - state.panOffset.y
+                };
+                wrapper.classList.add('panning');
+            }
+        });
+
+        // 触摸取消
+        wrapper.addEventListener('touchcancel', () => {
+            state.isTouching = false;
+            state.isPanning = false;
+            wrapper.classList.remove('panning');
+        });
+    }
+
+    // ========================================
+    // 触摸辅助函数
+    // ========================================
+    function getTouchDistance(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
     }
 
     // ========================================

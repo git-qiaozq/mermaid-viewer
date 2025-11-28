@@ -608,6 +608,10 @@ body {
     background: var(--bg-primary);
     position: relative;
     cursor: grab;
+    /* 优化触摸交互 */
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .preview-wrapper.panning {

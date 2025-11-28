@@ -16,7 +16,9 @@ import time
 # 配置
 PORT = 8080
 HOST = "localhost"
-STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
 
 # 全局服务器实例和关闭标志
 server_instance = None
@@ -58,7 +60,40 @@ class MermaidViewerHandler(http.server.SimpleHTTPRequestHandler):
         # 默认返回 index.html
         if self.path == "/" or self.path == "":
             self.path = "/index.html"
+        
+        # 处理 examples 目录请求
+        if self.path.startswith("/examples/"):
+            return self.serve_example_file()
+        
         return super().do_GET()
+
+    def serve_example_file(self):
+        """提供 examples 目录的文件服务"""
+        # 获取请求的文件名
+        filename = self.path[len("/examples/"):]
+        filepath = os.path.join(EXAMPLES_DIR, filename)
+        
+        # 安全检查：防止目录遍历攻击
+        if not os.path.abspath(filepath).startswith(os.path.abspath(EXAMPLES_DIR)):
+            self.send_error(403, "Forbidden")
+            return
+        
+        # 检查文件是否存在
+        if not os.path.exists(filepath) or not os.path.isfile(filepath):
+            self.send_error(404, "File not found")
+            return
+        
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", len(content.encode('utf-8')))
+            self.end_headers()
+            self.wfile.write(content.encode('utf-8'))
+        except Exception as e:
+            self.send_error(500, f"Internal server error: {e}")
 
     def do_POST(self):
         """处理 POST 请求"""

@@ -19,6 +19,20 @@
     };
 
     // ========================================
+    // 示例文件列表
+    // ========================================
+    const EXAMPLES = [
+        { name: '流程图', file: 'flowchart.mmd', type: 'mermaid' },
+        { name: '时序图', file: 'sequence.mmd', type: 'mermaid' },
+        { name: '类图', file: 'class-diagram.mmd', type: 'mermaid' },
+        { name: '状态图', file: 'state-diagram.mmd', type: 'mermaid' },
+        { name: 'ER 图', file: 'er-diagram.mmd', type: 'mermaid' },
+        { name: '甘特图', file: 'gantt.mmd', type: 'mermaid' },
+        { name: '饼图', file: 'pie-chart.mmd', type: 'mermaid' },
+        { name: '使用指南', file: 'sample-document.md', type: 'markdown' }
+    ];
+
+    // ========================================
     // 状态管理
     // ========================================
     const state = {
@@ -26,7 +40,8 @@
         currentZoom: 1,
         history: [],
         debounceTimer: null,
-        mermaidCounter: 0
+        mermaidCounter: 0,
+        isFullscreen: false     // 全屏预览模式
     };
 
     // ========================================
@@ -42,7 +57,11 @@
         historyPanel: null,
         historyList: null,
         toastContainer: null,
-        fileInput: null
+        fileInput: null,
+        mainContent: null,
+        fullscreenBtn: null,
+        examplesDropdown: null,
+        examplesMenu: null
     };
 
     // ========================================
@@ -60,6 +79,10 @@
         elements.historyList = document.getElementById('history-list');
         elements.toastContainer = document.getElementById('toast-container');
         elements.fileInput = document.getElementById('file-input');
+        elements.mainContent = document.querySelector('.main-content');
+        elements.fullscreenBtn = document.getElementById('btn-fullscreen');
+        elements.examplesDropdown = document.getElementById('examples-dropdown');
+        elements.examplesMenu = document.getElementById('examples-menu');
 
         // 初始化 Mermaid
         initMermaid();
@@ -248,6 +271,9 @@
         document.getElementById('btn-zoom-out').addEventListener('click', () => adjustZoom(-CONFIG.ZOOM_STEP));
         document.getElementById('btn-zoom-reset').addEventListener('click', resetZoom);
 
+        // 全屏预览按钮
+        elements.fullscreenBtn.addEventListener('click', toggleFullscreen);
+
         // 历史记录按钮
         document.getElementById('btn-history').addEventListener('click', toggleHistory);
         document.getElementById('btn-history-close').addEventListener('click', closeHistory);
@@ -278,6 +304,27 @@
         });
 
         elements.codeInput.addEventListener('drop', handleFileDrop);
+
+        // 示例下拉菜单
+        document.getElementById('btn-examples').addEventListener('click', toggleExamplesDropdown);
+        
+        // 示例项点击事件
+        elements.examplesMenu.querySelectorAll('.dropdown-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const filename = item.dataset.example;
+                if (filename) {
+                    loadExample(filename);
+                    closeExamplesDropdown();
+                }
+            });
+        });
+
+        // 点击其他地方关闭下拉菜单
+        document.addEventListener('click', (e) => {
+            if (!elements.examplesDropdown.contains(e.target)) {
+                closeExamplesDropdown();
+            }
+        });
     }
 
     // ========================================
@@ -542,6 +589,42 @@
     }
 
     // ========================================
+    // 示例下拉菜单控制
+    // ========================================
+    function toggleExamplesDropdown() {
+        elements.examplesDropdown.classList.toggle('open');
+    }
+
+    function closeExamplesDropdown() {
+        elements.examplesDropdown.classList.remove('open');
+    }
+
+    // ========================================
+    // 加载示例文件
+    // ========================================
+    async function loadExample(filename) {
+        try {
+            const response = await fetch(`/examples/${filename}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            const content = await response.text();
+            
+            // 设置内容到编辑器
+            elements.codeInput.value = content;
+            handleInputChange();
+            
+            // 查找示例名称
+            const example = EXAMPLES.find(e => e.file === filename);
+            const exampleName = example ? example.name : filename;
+            showToast(`已加载示例: ${exampleName}`, 'success');
+        } catch (error) {
+            console.error('加载示例失败:', error);
+            showToast(`加载示例失败: ${error.message}`, 'error');
+        }
+    }
+
+    // ========================================
     // 读取文件
     // ========================================
     function readFile(file) {
@@ -791,6 +874,30 @@
     function applyZoom() {
         elements.previewContent.style.transform = `scale(${state.currentZoom})`;
         elements.zoomLevel.textContent = `${Math.round(state.currentZoom * 100)}%`;
+    }
+
+    // ========================================
+    // 全屏预览
+    // ========================================
+    function toggleFullscreen() {
+        state.isFullscreen = !state.isFullscreen;
+        
+        if (state.isFullscreen) {
+            elements.mainContent.classList.add('fullscreen-preview');
+            elements.fullscreenBtn.classList.add('active');
+            showToast('已进入全屏预览，按 ESC 或 F 键退出', 'info');
+        } else {
+            elements.mainContent.classList.remove('fullscreen-preview');
+            elements.fullscreenBtn.classList.remove('active');
+        }
+    }
+
+    function exitFullscreen() {
+        if (state.isFullscreen) {
+            state.isFullscreen = false;
+            elements.mainContent.classList.remove('fullscreen-preview');
+            elements.fullscreenBtn.classList.remove('active');
+        }
     }
 
     // ========================================
@@ -1070,9 +1177,22 @@
             exportImage('png');
         }
 
-        // Escape: 关闭历史面板
+        // Escape: 关闭面板/退出全屏
         if (e.key === 'Escape') {
-            closeHistory();
+            if (state.isFullscreen) {
+                exitFullscreen();
+            } else {
+                closeHistory();
+                hideExitModal();
+            }
+        }
+
+        // F: 切换全屏预览（仅当不在输入框中时）
+        if (e.key === 'f' || e.key === 'F') {
+            if (document.activeElement !== elements.codeInput) {
+                e.preventDefault();
+                toggleFullscreen();
+            }
         }
 
         // Ctrl/Cmd + H: 切换历史面板

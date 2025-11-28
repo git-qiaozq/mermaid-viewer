@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid Viewer - 本地图表展示工具</title>
+    <link rel="stylesheet" href="css/highlight-dark.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部工具栏 -->
+        <header class="toolbar">
+            <div class="toolbar-left">
+                <div class="logo">
+                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5"/>
+                        <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                    <span class="logo-text">Mermaid Viewer</span>
+                </div>
+            </div>
+            <div class="toolbar-center">
+                <div class="mode-switch">
+                    <button class="mode-btn active" data-mode="auto" title="自动检测">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                        </svg>
+                        <span>自动</span>
+                    </button>
+                    <button class="mode-btn" data-mode="mermaid" title="Mermaid 模式">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <path d="M7 7h.01M7 12h.01M7 17h.01M12 7h5M12 12h5M12 17h5"/>
+                        </svg>
+                        <span>Mermaid</span>
+                    </button>
+                    <button class="mode-btn" data-mode="markdown" title="Markdown 模式">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 3v4a1 1 0 0 0 1 1h4"/>
+                            <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/>
+                            <path d="M9 9h1M9 13h6M9 17h6"/>
+                        </svg>
+                        <span>Markdown</span>
+                    </button>
+                </div>
+            </div>
+            <div class="toolbar-right">
+                <button class="action-btn" id="btn-clear" title="清空内容">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                </button>
+                <button class="action-btn" id="btn-export-svg" title="导出 SVG">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <span>SVG</span>
+                </button>
+                <button class="action-btn" id="btn-export-png" title="导出 PNG">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <span>PNG</span>
+                </button>
+                <button class="action-btn history-toggle" id="btn-history" title="历史记录">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 左侧输入区 -->
+            <section class="editor-panel">
+                <div class="panel-header">
+                    <h2>输入</h2>
+                    <div class="panel-actions">
+                        <input type="file" id="file-input" accept=".md,.mmd,.txt,.markdown" style="display: none;">
+                        <button class="upload-btn" id="btn-upload" title="上传文件">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            <span>上传文件</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="editor-wrapper">
+                    <textarea id="code-input" class="code-editor" placeholder="在此输入 Mermaid 代码或 Markdown 内容...
+
+示例 Mermaid 流程图:
+graph TD
+    A[开始] --> B{判断}
+    B -->|是| C[执行A]
+    B -->|否| D[执行B]
+    C --> E[结束]
+    D --> E
+
+示例 Markdown:
+# 标题
+这是一段 **Markdown** 文本。
+- 列表项 1
+- 列表项 2
+
+也支持代码块:
+```javascript
+console.log('Hello World');
+```"></textarea>
+                    <div class="editor-footer">
+                        <span class="char-count">0 字符</span>
+                        <span class="detected-type">自动检测</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 分隔条 -->
+            <div class="resizer" id="resizer"></div>
+
+            <!-- 右侧预览区 -->
+            <section class="preview-panel">
+                <div class="panel-header">
+                    <h2>预览</h2>
+                    <div class="panel-actions">
+                        <button class="zoom-btn" id="btn-zoom-out" title="缩小">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <path d="M21 21l-4.35-4.35M8 11h6"/>
+                            </svg>
+                        </button>
+                        <span class="zoom-level">100%</span>
+                        <button class="zoom-btn" id="btn-zoom-in" title="放大">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/>
+                            </svg>
+                        </button>
+                        <button class="zoom-btn" id="btn-zoom-reset" title="重置缩放">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                <path d="M3 3v5h5"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="preview-wrapper" id="preview-wrapper">
+                    <div class="preview-content" id="preview-content">
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <path d="M21 15l-5-5L5 21"/>
+                            </svg>
+                            <p>输入内容后将在此处显示预览</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 历史记录面板 -->
+        <aside class="history-panel" id="history-panel">
+            <div class="history-header">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    历史记录
+                </h3>
+                <button class="history-close" id="btn-history-close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="history-list" id="history-list">
+                <div class="history-empty">
+                    <p>暂无历史记录</p>
+                </div>
+            </div>
+            <div class="history-footer">
+                <button class="history-clear-btn" id="btn-history-clear">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                    清空历史
+                </button>
+            </div>
+        </aside>
+
+        <!-- 通知提示 -->
+        <div class="toast-container" id="toast-container"></div>
+    </div>
+
+    <!-- JavaScript 文件 -->
+    <script src="js/mermaid.min.js"></script>
+    <script src="js/marked.min.js"></script>
+    <script src="js/highlight.min.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
+

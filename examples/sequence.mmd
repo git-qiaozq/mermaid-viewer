@@ -1,0 +1,28 @@
+sequenceDiagram
+    autonumber
+    participant U as 用户
+    participant F as 前端
+    participant A as API网关
+    participant S as 服务端
+    participant D as 数据库
+    participant C as 缓存
+
+    U->>F: 点击登录按钮
+    F->>A: POST /api/login
+    A->>S: 转发请求
+    S->>C: 查询登录限制
+    C-->>S: 返回限制状态
+    
+    alt 未被限制
+        S->>D: 验证用户凭证
+        D-->>S: 返回用户信息
+        S->>C: 缓存用户会话
+        S-->>A: 返回Token
+        A-->>F: 响应成功
+        F-->>U: 跳转到首页
+    else 登录次数超限
+        S-->>A: 返回错误
+        A-->>F: 429 Too Many Requests
+        F-->>U: 显示错误提示
+    end
+

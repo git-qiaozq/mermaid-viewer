@@ -1,0 +1,46 @@
+classDiagram
+    class Animal {
+        <<abstract>>
+        +String name
+        +int age
+        +makeSound() void
+        +move() void
+    }
+    
+    class Dog {
+        +String breed
+        +makeSound() void
+        +fetch() void
+    }
+    
+    class Cat {
+        +bool isIndoor
+        +makeSound() void
+        +scratch() void
+    }
+    
+    class Bird {
+        +double wingspan
+        +makeSound() void
+        +fly() void
+    }
+    
+    class Pet {
+        <<interface>>
+        +play() void
+        +feed() void
+    }
+    
+    class Owner {
+        +String name
+        +List~Pet~ pets
+        +adoptPet(Pet pet) void
+    }
+    
+    Animal <|-- Dog
+    Animal <|-- Cat
+    Animal <|-- Bird
+    Pet <|.. Dog
+    Pet <|.. Cat
+    Owner "1" --> "*" Pet : owns
+

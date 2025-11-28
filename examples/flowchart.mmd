@@ -1,0 +1,18 @@
+graph TD
+    A[用户请求] --> B{身份验证}
+    B -->|成功| C[加载用户数据]
+    B -->|失败| D[显示登录页面]
+    C --> E{权限检查}
+    E -->|有权限| F[显示内容]
+    E -->|无权限| G[显示403错误]
+    D --> H[用户登录]
+    H --> B
+    F --> I[记录访问日志]
+    G --> I
+    I --> J[结束]
+
+    style A fill:#39d4ff,stroke:#39d4ff,color:#0d1117
+    style J fill:#3fb950,stroke:#3fb950,color:#0d1117
+    style D fill:#f0883e,stroke:#f0883e,color:#0d1117
+    style G fill:#f85149,stroke:#f85149,color:#0d1117
+

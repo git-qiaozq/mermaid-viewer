@@ -607,6 +607,15 @@ body {
     overflow: auto;
     background: var(--bg-primary);
     position: relative;
+    cursor: grab;
+}
+
+.preview-wrapper.panning {
+    cursor: grabbing;
+}
+
+.preview-wrapper.panning * {
+    pointer-events: none;
 }
 
 .preview-content {

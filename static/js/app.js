@@ -41,7 +41,11 @@
         history: [],
         debounceTimer: null,
         mermaidCounter: 0,
-        isFullscreen: false     // 全屏预览模式
+        isFullscreen: false,    // 全屏预览模式
+        // 平移相关状态
+        isPanning: false,
+        panStart: { x: 0, y: 0 },
+        panOffset: { x: 0, y: 0 }
     };
 
     // ========================================
@@ -98,6 +102,9 @@
 
         // 初始化分隔条拖动
         initResizer();
+
+        // 初始化预览区拖拽平移
+        initPanning();
     }
 
     // ========================================
@@ -868,12 +875,74 @@
 
     function resetZoom() {
         state.currentZoom = 1;
+        state.panOffset = { x: 0, y: 0 };
         applyZoom();
     }
 
     function applyZoom() {
-        elements.previewContent.style.transform = `scale(${state.currentZoom})`;
+        applyTransform();
         elements.zoomLevel.textContent = `${Math.round(state.currentZoom * 100)}%`;
+    }
+
+    // ========================================
+    // 应用变换（缩放 + 平移）
+    // ========================================
+    function applyTransform() {
+        const { currentZoom, panOffset } = state;
+        elements.previewContent.style.transform = `translate(${panOffset.x}px, ${panOffset.y}px) scale(${currentZoom})`;
+    }
+
+    // ========================================
+    // 预览区拖拽平移
+    // ========================================
+    function initPanning() {
+        const wrapper = elements.previewWrapper;
+
+        // 鼠标按下开始拖拽
+        wrapper.addEventListener('mousedown', (e) => {
+            // 忽略右键和中键
+            if (e.button !== 0) return;
+            
+            // 如果点击的是按钮等交互元素，不启动拖拽
+            if (e.target.closest('button, a, input')) return;
+
+            state.isPanning = true;
+            state.panStart = {
+                x: e.clientX - state.panOffset.x,
+                y: e.clientY - state.panOffset.y
+            };
+            
+            wrapper.classList.add('panning');
+            e.preventDefault();
+        });
+
+        // 鼠标移动时平移
+        document.addEventListener('mousemove', (e) => {
+            if (!state.isPanning) return;
+
+            state.panOffset = {
+                x: e.clientX - state.panStart.x,
+                y: e.clientY - state.panStart.y
+            };
+            
+            applyTransform();
+        });
+
+        // 鼠标释放结束拖拽
+        document.addEventListener('mouseup', () => {
+            if (state.isPanning) {
+                state.isPanning = false;
+                elements.previewWrapper.classList.remove('panning');
+            }
+        });
+
+        // 鼠标离开窗口时也结束拖拽
+        document.addEventListener('mouseleave', () => {
+            if (state.isPanning) {
+                state.isPanning = false;
+                elements.previewWrapper.classList.remove('panning');
+            }
+        });
     }
 
     // ========================================

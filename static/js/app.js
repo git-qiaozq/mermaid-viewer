@@ -11,8 +11,10 @@
     // ========================================
     const CONFIG = {
         MAX_HISTORY: 20,
+        MAX_FAVORITES: 10,
         DEBOUNCE_DELAY: 500,
         STORAGE_KEY: 'mermaid-viewer-history',
+        FAVORITES_KEY: 'mermaid-viewer-favorites',
         ZOOM_STEP: 0.1,
         ZOOM_MIN: 0.25,
         ZOOM_MAX: 3
@@ -39,6 +41,10 @@
         mode: 'auto',           // 'auto' | 'mermaid' | 'markdown'
         currentZoom: 1,
         history: [],
+        favorites: [],          // 收藏列表
+        currentTab: 'favorites', // 当前标签页 'favorites' | 'history'
+        pendingFavoriteId: null, // 待收藏的历史记录ID
+        pendingDeleteFavoriteId: null, // 待删除的收藏ID
         debounceTimer: null,
         mermaidCounter: 0,
         isFullscreen: false,    // 全屏预览模式
@@ -64,6 +70,12 @@
         zoomLevel: null,
         historyPanel: null,
         historyList: null,
+        favoritesList: null,
+        favoritesCount: null,
+        historyCount: null,
+        favoriteModal: null,
+        favoriteTitle: null,
+        deleteFavoriteModal: null,
         toastContainer: null,
         fileInput: null,
         mainContent: null,
@@ -86,6 +98,12 @@
         elements.zoomLevel = document.querySelector('.zoom-level');
         elements.historyPanel = document.getElementById('history-panel');
         elements.historyList = document.getElementById('history-list');
+        elements.favoritesList = document.getElementById('favorites-list');
+        elements.favoritesCount = document.getElementById('favorites-count');
+        elements.historyCount = document.getElementById('history-count');
+        elements.favoriteModal = document.getElementById('favorite-modal');
+        elements.favoriteTitle = document.getElementById('favorite-title');
+        elements.deleteFavoriteModal = document.getElementById('delete-favorite-modal');
         elements.toastContainer = document.getElementById('toast-container');
         elements.fileInput = document.getElementById('file-input');
         elements.mainContent = document.querySelector('.main-content');
@@ -105,6 +123,9 @@
 
         // 加载历史记录
         loadHistory();
+
+        // 加载收藏
+        loadFavorites();
 
         // 绑定事件
         bindEvents();
@@ -378,6 +399,24 @@
         document.getElementById('btn-history').addEventListener('click', toggleHistory);
         document.getElementById('btn-history-close').addEventListener('click', closeHistory);
         document.getElementById('btn-history-clear').addEventListener('click', clearHistory);
+
+        // 标签页切换
+        document.getElementById('tab-favorites').addEventListener('click', () => switchTab('favorites'));
+        document.getElementById('tab-history').addEventListener('click', () => switchTab('history'));
+
+        // 收藏弹窗
+        document.getElementById('btn-favorite-cancel').addEventListener('click', hideFavoriteModal);
+        document.getElementById('btn-favorite-confirm').addEventListener('click', confirmAddFavorite);
+        elements.favoriteModal.addEventListener('click', (e) => {
+            if (e.target.id === 'favorite-modal') hideFavoriteModal();
+        });
+
+        // 删除收藏确认弹窗
+        document.getElementById('btn-delete-favorite-cancel').addEventListener('click', hideDeleteFavoriteModal);
+        document.getElementById('btn-delete-favorite-confirm').addEventListener('click', confirmDeleteFavorite);
+        elements.deleteFavoriteModal.addEventListener('click', (e) => {
+            if (e.target.id === 'delete-favorite-modal') hideDeleteFavoriteModal();
+        });
 
         // 键盘快捷键
         document.addEventListener('keydown', handleKeydown);
@@ -1332,6 +1371,9 @@
     }
 
     function renderHistory() {
+        // 更新历史数量
+        elements.historyCount.textContent = state.history.length;
+
         if (state.history.length === 0) {
             elements.historyList.innerHTML = `
                 <div class="history-empty">
@@ -1341,27 +1383,51 @@
             return;
         }
 
-        elements.historyList.innerHTML = state.history.map(item => `
+        elements.historyList.innerHTML = state.history.map(item => {
+            const isFavorited = state.favorites.some(f => f.content === item.content);
+            return `
             <div class="history-item" data-id="${item.id}">
                 <div class="history-item-header">
                     <span class="history-item-type ${item.type}">${item.type === 'mermaid' ? 'Mermaid' : 'Markdown'}</span>
+                    ${item.title ? `<span class="history-item-title">${escapeHtml(item.title)}</span>` : ''}
                     <span class="history-item-time">${formatTime(item.timestamp)}</span>
-                    <button class="history-item-delete" data-id="${item.id}" title="删除">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="6" x2="6" y2="18"/>
-                            <line x1="6" y1="6" x2="18" y2="18"/>
-                        </svg>
-                    </button>
+                    <div class="history-item-actions">
+                        <button class="history-item-favorite ${isFavorited ? 'favorited' : ''}" data-id="${item.id}" title="${isFavorited ? '已收藏' : '添加收藏'}">
+                            <svg viewBox="0 0 24 24" fill="${isFavorited ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                        </button>
+                        <button class="history-item-delete" data-id="${item.id}" title="删除">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="history-item-preview">${escapeHtml(item.preview)}</div>
             </div>
-        `).join('');
+        `}).join('');
 
         // 绑定点击事件
         elements.historyList.querySelectorAll('.history-item').forEach(item => {
             item.addEventListener('click', (e) => {
-                if (!e.target.closest('.history-item-delete')) {
+                if (!e.target.closest('.history-item-delete') && !e.target.closest('.history-item-favorite')) {
                     loadFromHistory(parseInt(item.dataset.id));
+                }
+            });
+        });
+
+        // 绑定收藏事件
+        elements.historyList.querySelectorAll('.history-item-favorite').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = parseInt(btn.dataset.id);
+                const isFavorited = btn.classList.contains('favorited');
+                if (!isFavorited) {
+                    showFavoriteModal(id);
+                } else {
+                    showToast('该内容已在收藏中', 'info');
                 }
             });
         });
@@ -1393,12 +1459,22 @@
     }
 
     function clearHistory() {
-        if (state.history.length === 0) return;
-
-        state.history = [];
-        saveHistory();
-        renderHistory();
-        showToast('历史记录已清空', 'info');
+        if (state.currentTab === 'favorites') {
+            // 清空收藏
+            if (state.favorites.length === 0) return;
+            state.favorites = [];
+            saveFavorites();
+            renderFavorites();
+            renderHistory(); // 更新历史列表中的收藏状态
+            showToast('收藏已清空', 'info');
+        } else {
+            // 清空历史
+            if (state.history.length === 0) return;
+            state.history = [];
+            saveHistory();
+            renderHistory();
+            showToast('历史记录已清空', 'info');
+        }
     }
 
     function toggleHistory() {
@@ -1409,6 +1485,233 @@
     function closeHistory() {
         elements.historyPanel.classList.remove('open');
         document.getElementById('btn-history').classList.remove('active');
+    }
+
+    // ========================================
+    // 收藏管理
+    // ========================================
+    function loadFavorites() {
+        try {
+            const saved = localStorage.getItem(CONFIG.FAVORITES_KEY);
+            if (saved) {
+                state.favorites = JSON.parse(saved);
+                renderFavorites();
+            }
+        } catch (e) {
+            console.error('加载收藏失败:', e);
+            state.favorites = [];
+        }
+    }
+
+    function saveFavorites() {
+        try {
+            localStorage.setItem(CONFIG.FAVORITES_KEY, JSON.stringify(state.favorites));
+        } catch (e) {
+            console.error('保存收藏失败:', e);
+        }
+    }
+
+    function renderFavorites() {
+        // 更新收藏数量
+        elements.favoritesCount.textContent = state.favorites.length;
+
+        if (state.favorites.length === 0) {
+            elements.favoritesList.innerHTML = `
+                <div class="history-empty">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    <p>暂无收藏</p>
+                    <p class="history-empty-hint">点击历史记录中的星形图标添加收藏</p>
+                </div>
+            `;
+            return;
+        }
+
+        elements.favoritesList.innerHTML = state.favorites.map(item => `
+            <div class="history-item favorite-item" data-id="${item.id}">
+                <div class="history-item-header">
+                    <span class="history-item-type ${item.type}">${item.type === 'mermaid' ? 'Mermaid' : 'Markdown'}</span>
+                    ${item.title ? `<span class="history-item-title">${escapeHtml(item.title)}</span>` : ''}
+                    <span class="history-item-time">${formatTime(item.timestamp)}</span>
+                    <div class="history-item-actions">
+                        <button class="history-item-favorite favorited" data-id="${item.id}" title="取消收藏">
+                            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                        </button>
+                        <button class="history-item-delete" data-id="${item.id}" title="删除">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="history-item-preview">${escapeHtml(item.preview)}</div>
+            </div>
+        `).join('');
+
+        // 绑定点击事件
+        elements.favoritesList.querySelectorAll('.history-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                if (!e.target.closest('.history-item-delete') && !e.target.closest('.history-item-favorite')) {
+                    loadFromFavorites(parseInt(item.dataset.id));
+                }
+            });
+        });
+
+        // 绑定取消收藏事件
+        elements.favoritesList.querySelectorAll('.history-item-favorite').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showDeleteFavoriteModal(parseInt(btn.dataset.id));
+            });
+        });
+
+        // 绑定删除事件
+        elements.favoritesList.querySelectorAll('.history-item-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showDeleteFavoriteModal(parseInt(btn.dataset.id));
+            });
+        });
+    }
+
+    function loadFromFavorites(id) {
+        const item = state.favorites.find(f => f.id === id);
+        if (item) {
+            elements.codeInput.value = item.content;
+            handleInputChange();
+            closeHistory();
+            showToast('已加载收藏', 'info');
+        }
+    }
+
+    function showFavoriteModal(historyId) {
+        state.pendingFavoriteId = historyId;
+        elements.favoriteTitle.value = '';
+        elements.favoriteModal.classList.add('open');
+        setTimeout(() => elements.favoriteTitle.focus(), 100);
+    }
+
+    function hideFavoriteModal() {
+        elements.favoriteModal.classList.remove('open');
+        state.pendingFavoriteId = null;
+    }
+
+    function confirmAddFavorite() {
+        if (state.pendingFavoriteId === null) return;
+
+        const historyItem = state.history.find(h => h.id === state.pendingFavoriteId);
+        if (!historyItem) {
+            hideFavoriteModal();
+            showToast('找不到该记录', 'error');
+            return;
+        }
+
+        // 检查是否已收藏
+        if (state.favorites.some(f => f.content === historyItem.content)) {
+            hideFavoriteModal();
+            showToast('该内容已在收藏中', 'info');
+            return;
+        }
+
+        // 检查收藏数量限制
+        if (state.favorites.length >= CONFIG.MAX_FAVORITES) {
+            hideFavoriteModal();
+            showToast(`收藏数量已达上限（${CONFIG.MAX_FAVORITES}个）`, 'error');
+            return;
+        }
+
+        const title = elements.favoriteTitle.value.trim();
+        
+        // 添加到收藏
+        const favoriteItem = {
+            id: Date.now(),
+            content: historyItem.content,
+            type: historyItem.type,
+            title: title || '',
+            timestamp: Date.now(),
+            preview: historyItem.preview
+        };
+
+        state.favorites.unshift(favoriteItem);
+        saveFavorites();
+        renderFavorites();
+        renderHistory(); // 更新历史列表中的收藏状态
+
+        hideFavoriteModal();
+        
+        // 切换到收藏标签页
+        switchTab('favorites');
+        
+        // 显示收藏成功动画和提示
+        showToast('已添加到收藏', 'success');
+        
+        // 高亮刚添加的收藏项
+        setTimeout(() => {
+            const newItem = elements.favoritesList.querySelector(`[data-id="${favoriteItem.id}"]`);
+            if (newItem) {
+                newItem.classList.add('favorite-highlight');
+                setTimeout(() => newItem.classList.remove('favorite-highlight'), 1500);
+            }
+        }, 100);
+    }
+
+    function showDeleteFavoriteModal(id) {
+        state.pendingDeleteFavoriteId = id;
+        elements.deleteFavoriteModal.classList.add('open');
+    }
+
+    function hideDeleteFavoriteModal() {
+        elements.deleteFavoriteModal.classList.remove('open');
+        state.pendingDeleteFavoriteId = null;
+    }
+
+    function confirmDeleteFavorite() {
+        if (state.pendingDeleteFavoriteId === null) return;
+
+        state.favorites = state.favorites.filter(f => f.id !== state.pendingDeleteFavoriteId);
+        saveFavorites();
+        renderFavorites();
+        renderHistory(); // 更新历史列表中的收藏状态
+
+        hideDeleteFavoriteModal();
+        showToast('已从收藏中移除', 'info');
+    }
+
+    // ========================================
+    // 标签页切换
+    // ========================================
+    function switchTab(tab) {
+        state.currentTab = tab;
+
+        // 更新标签页按钮状态
+        document.getElementById('tab-favorites').classList.toggle('active', tab === 'favorites');
+        document.getElementById('tab-history').classList.toggle('active', tab === 'history');
+
+        // 切换列表显示
+        elements.favoritesList.classList.toggle('hidden', tab !== 'favorites');
+        elements.historyList.classList.toggle('hidden', tab !== 'history');
+
+        // 更新清空按钮文本
+        const clearBtn = document.getElementById('btn-history-clear');
+        if (tab === 'favorites') {
+            clearBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                清空收藏
+            `;
+        } else {
+            clearBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                清空历史
+            `;
+        }
     }
 
     // ========================================
@@ -1606,6 +1909,10 @@
         if (e.key === 'Escape') {
             if (state.isFullscreen) {
                 exitFullscreen();
+            } else if (elements.favoriteModal.classList.contains('open')) {
+                hideFavoriteModal();
+            } else if (elements.deleteFavoriteModal.classList.contains('open')) {
+                hideDeleteFavoriteModal();
             } else {
                 closeHistory();
                 hideExitModal();

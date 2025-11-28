@@ -121,11 +121,11 @@
         // 初始化 Marked (Markdown 解析器)
         initMarked();
 
+        // 加载收藏（必须在历史记录之前，因为历史记录需要显示收藏状态）
+        loadFavorites();
+
         // 加载历史记录
         loadHistory();
-
-        // 加载收藏
-        loadFavorites();
 
         // 绑定事件
         bindEvents();

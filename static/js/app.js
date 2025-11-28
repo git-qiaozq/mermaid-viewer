@@ -256,6 +256,14 @@
         // 键盘快捷键
         document.addEventListener('keydown', handleKeydown);
 
+        // 退出按钮
+        document.getElementById('btn-exit').addEventListener('click', showExitModal);
+        document.getElementById('btn-exit-cancel').addEventListener('click', hideExitModal);
+        document.getElementById('btn-exit-confirm').addEventListener('click', shutdownServer);
+        document.getElementById('exit-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'exit-modal') hideExitModal();
+        });
+
         // 支持拖拽文件
         elements.codeInput.addEventListener('dragover', (e) => {
             e.preventDefault();
@@ -954,6 +962,85 @@
                 document.body.style.userSelect = '';
             }
         });
+    }
+
+    // ========================================
+    // 退出功能
+    // ========================================
+    function showExitModal() {
+        document.getElementById('exit-modal').classList.add('open');
+    }
+
+    function hideExitModal() {
+        document.getElementById('exit-modal').classList.remove('open');
+    }
+
+    async function shutdownServer() {
+        try {
+            const response = await fetch('/api/shutdown', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                hideExitModal();
+                // 显示关闭提示
+                document.body.innerHTML = `
+                    <div style="
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        height: 100vh;
+                        background: #0d1117;
+                        color: #e6edf3;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                        text-align: center;
+                        padding: 20px;
+                    ">
+                        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2" style="margin-bottom: 24px;">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        <h1 style="font-size: 24px; margin-bottom: 12px; color: #e6edf3;">服务器已关闭</h1>
+                        <p style="font-size: 14px; color: #8b949e; margin-bottom: 24px;">感谢使用 Mermaid Viewer！</p>
+                        <p style="font-size: 13px; color: #6e7681;">
+                            如需再次使用，请运行 <code style="background: #21262d; padding: 2px 8px; border-radius: 4px; color: #39d4ff;">python server.py</code>
+                        </p>
+                    </div>
+                `;
+            } else {
+                showToast('关闭服务器失败', 'error');
+            }
+        } catch (error) {
+            // 网络错误可能是因为服务器已经关闭
+            document.body.innerHTML = `
+                <div style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100vh;
+                    background: #0d1117;
+                    color: #e6edf3;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                    text-align: center;
+                    padding: 20px;
+                ">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2" style="margin-bottom: 24px;">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <h1 style="font-size: 24px; margin-bottom: 12px; color: #e6edf3;">服务器已关闭</h1>
+                    <p style="font-size: 14px; color: #8b949e; margin-bottom: 24px;">感谢使用 Mermaid Viewer！</p>
+                    <p style="font-size: 13px; color: #6e7681;">
+                        如需再次使用，请运行 <code style="background: #21262d; padding: 2px 8px; border-radius: 4px; color: #39d4ff;">python server.py</code>
+                    </p>
+                </div>
+            `;
+        }
     }
 
     // ========================================

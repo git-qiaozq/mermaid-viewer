@@ -75,6 +75,13 @@
                         <polyline points="12 6 12 12 16 14"/>
                     </svg>
                 </button>
+                <button class="action-btn exit-btn" id="btn-exit" title="退出程序">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                </button>
             </div>
         </header>
 
@@ -202,6 +209,28 @@ console.log('Hello World');
 
         <!-- 通知提示 -->
         <div class="toast-container" id="toast-container"></div>
+
+        <!-- 退出确认对话框 -->
+        <div class="modal-overlay" id="exit-modal">
+            <div class="modal-dialog">
+                <div class="modal-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <h3>确认退出</h3>
+                </div>
+                <div class="modal-body">
+                    <p>确定要关闭 Mermaid Viewer 服务器吗？</p>
+                    <p class="modal-hint">关闭后需要重新运行 <code>python server.py</code> 才能再次使用。</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="modal-btn modal-btn-cancel" id="btn-exit-cancel">取消</button>
+                    <button class="modal-btn modal-btn-confirm" id="btn-exit-confirm">确认退出</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- JavaScript 文件 -->

@@ -1554,15 +1554,156 @@ body {
 /* ER 图 */
 .mermaid .er.entityBox {
     fill: var(--bg-tertiary) !important;
-    stroke: var(--accent-purple) !important;
+    stroke: var(--accent-cyan) !important;
+    stroke-width: 1.5px !important;
 }
 
 .mermaid .er.entityLabel {
     fill: var(--text-primary) !important;
+    font-weight: 600 !important;
 }
 
 .mermaid .er.relationshipLine {
     stroke: var(--text-secondary) !important;
+    stroke-width: 1.5px !important;
+}
+
+.mermaid .er.relationshipLabel {
+    fill: var(--text-primary) !important;
+}
+
+/* ER 图属性行 */
+.mermaid .er.attributeBoxOdd {
+    fill: #21262d !important;
+}
+
+.mermaid .er.attributeBoxEven {
+    fill: #2d333b !important;
+}
+
+/* 甘特图优化 */
+.mermaid .section0,
+.mermaid .section1,
+.mermaid .section2,
+.mermaid .section3 {
+    fill: #1c2128 !important;
+}
+
+.mermaid .section0.odd,
+.mermaid .section1.odd,
+.mermaid .section2.odd,
+.mermaid .section3.odd {
+    fill: #161b22 !important;
+}
+
+.mermaid .grid .tick line {
+    stroke: #373e47 !important;
+    stroke-opacity: 0.8 !important;
+}
+
+.mermaid .grid .tick text {
+    fill: var(--text-secondary) !important;
+}
+
+.mermaid .taskText {
+    fill: var(--text-primary) !important;
+    font-weight: 500 !important;
+}
+
+.mermaid .taskTextOutsideRight,
+.mermaid .taskTextOutsideLeft {
+    fill: var(--text-primary) !important;
+}
+
+.mermaid .sectionTitle {
+    fill: var(--text-primary) !important;
+    font-weight: 600 !important;
+}
+
+.mermaid .titleText {
+    fill: var(--text-primary) !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+}
+
+/* 甘特图任务条 */
+.mermaid .task {
+    stroke-width: 1.5px !important;
+}
+
+.mermaid .done0,
+.mermaid .done1,
+.mermaid .done2,
+.mermaid .done3 {
+    fill: #238636 !important;
+    stroke: #3fb950 !important;
+}
+
+.mermaid .active0,
+.mermaid .active1,
+.mermaid .active2,
+.mermaid .active3 {
+    fill: #388bfd !important;
+    stroke: #58a6ff !important;
+}
+
+.mermaid .crit0,
+.mermaid .crit1,
+.mermaid .crit2,
+.mermaid .crit3 {
+    fill: #da3633 !important;
+    stroke: #f85149 !important;
+}
+
+/* 亮色模式 ER 图和甘特图 */
+[data-theme="light"] .mermaid .er.attributeBoxOdd {
+    fill: #eaeef2 !important;
+}
+
+[data-theme="light"] .mermaid .er.attributeBoxEven {
+    fill: #f6f8fa !important;
+}
+
+[data-theme="light"] .mermaid .section0,
+[data-theme="light"] .mermaid .section1,
+[data-theme="light"] .mermaid .section2,
+[data-theme="light"] .mermaid .section3 {
+    fill: #f6f8fa !important;
+}
+
+[data-theme="light"] .mermaid .section0.odd,
+[data-theme="light"] .mermaid .section1.odd,
+[data-theme="light"] .mermaid .section2.odd,
+[data-theme="light"] .mermaid .section3.odd {
+    fill: #eaeef2 !important;
+}
+
+[data-theme="light"] .mermaid .grid .tick line {
+    stroke: #d0d7de !important;
+}
+
+[data-theme="light"] .mermaid .done0,
+[data-theme="light"] .mermaid .done1,
+[data-theme="light"] .mermaid .done2,
+[data-theme="light"] .mermaid .done3 {
+    fill: #1a7f37 !important;
+    stroke: #2da44e !important;
+}
+
+[data-theme="light"] .mermaid .active0,
+[data-theme="light"] .mermaid .active1,
+[data-theme="light"] .mermaid .active2,
+[data-theme="light"] .mermaid .active3 {
+    fill: #0969da !important;
+    stroke: #218bff !important;
+}
+
+[data-theme="light"] .mermaid .crit0,
+[data-theme="light"] .mermaid .crit1,
+[data-theme="light"] .mermaid .crit2,
+[data-theme="light"] .mermaid .crit3 {
+    fill: #cf222e !important;
+    stroke: #fa4549 !important;
 }
 
 /* ========================================

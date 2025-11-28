@@ -132,6 +132,13 @@
                         <polyline points="12 6 12 12 16 14"/>
                     </svg>
                 </button>
+                <button class="action-btn" id="btn-help" title="帮助 (?)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9.5 9a3 3 0 0 1 5 1c0 2-3 3-3 3"/>
+                        <circle cx="12" cy="17" r="0.5" fill="currentColor"/>
+                    </svg>
+                </button>
                 <button class="action-btn exit-btn" id="btn-exit" title="退出程序">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -294,6 +301,65 @@ console.log('Hello World');
                 <div class="modal-footer">
                     <button class="modal-btn modal-btn-cancel" id="btn-exit-cancel">取消</button>
                     <button class="modal-btn modal-btn-confirm" id="btn-exit-confirm">确认退出</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 帮助面板 -->
+        <div class="modal-overlay" id="help-modal">
+            <div class="modal-dialog help-dialog">
+                <div class="modal-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9.5 9a3 3 0 0 1 5 1c0 2-3 3-3 3"/>
+                        <circle cx="12" cy="17" r="0.5" fill="currentColor"/>
+                    </svg>
+                    <h3>快捷键帮助</h3>
+                </div>
+                <div class="modal-body help-body">
+                    <div class="help-section">
+                        <h4>文件操作</h4>
+                        <div class="help-item">
+                            <span class="help-keys"><kbd>Ctrl</kbd> + <kbd>S</kbd></span>
+                            <span class="help-desc">保存到历史记录</span>
+                        </div>
+                    </div>
+                    <div class="help-section">
+                        <h4>导出</h4>
+                        <div class="help-item">
+                            <span class="help-keys"><kbd>Ctrl</kbd> + <kbd>E</kbd></span>
+                            <span class="help-desc">导出 SVG</span>
+                        </div>
+                        <div class="help-item">
+                            <span class="help-keys"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd></span>
+                            <span class="help-desc">导出 PNG</span>
+                        </div>
+                    </div>
+                    <div class="help-section">
+                        <h4>视图</h4>
+                        <div class="help-item">
+                            <span class="help-keys"><kbd>F</kbd></span>
+                            <span class="help-desc">切换全屏预览</span>
+                        </div>
+                        <div class="help-item">
+                            <span class="help-keys"><kbd>Ctrl</kbd> + <kbd>H</kbd></span>
+                            <span class="help-desc">切换历史面板</span>
+                        </div>
+                    </div>
+                    <div class="help-section">
+                        <h4>其他</h4>
+                        <div class="help-item">
+                            <span class="help-keys"><kbd>?</kbd></span>
+                            <span class="help-desc">显示此帮助</span>
+                        </div>
+                        <div class="help-item">
+                            <span class="help-keys"><kbd>Esc</kbd></span>
+                            <span class="help-desc">关闭面板/退出全屏</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="modal-btn modal-btn-cancel" id="btn-help-close">关闭</button>
                 </div>
             </div>
         </div>

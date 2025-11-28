@@ -65,7 +65,8 @@
         mainContent: null,
         fullscreenBtn: null,
         examplesDropdown: null,
-        examplesMenu: null
+        examplesMenu: null,
+        helpModal: null
     };
 
     // ========================================
@@ -87,6 +88,7 @@
         elements.fullscreenBtn = document.getElementById('btn-fullscreen');
         elements.examplesDropdown = document.getElementById('examples-dropdown');
         elements.examplesMenu = document.getElementById('examples-menu');
+        elements.helpModal = document.getElementById('help-modal');
 
         // 初始化 Mermaid
         initMermaid();
@@ -295,6 +297,13 @@
         document.getElementById('btn-exit-confirm').addEventListener('click', shutdownServer);
         document.getElementById('exit-modal').addEventListener('click', (e) => {
             if (e.target.id === 'exit-modal') hideExitModal();
+        });
+
+        // 帮助面板
+        document.getElementById('btn-help').addEventListener('click', showHelpModal);
+        document.getElementById('btn-help-close').addEventListener('click', hideHelpModal);
+        elements.helpModal.addEventListener('click', (e) => {
+            if (e.target.id === 'help-modal') hideHelpModal();
         });
 
         // 支持拖拽文件
@@ -1151,6 +1160,17 @@
         document.getElementById('exit-modal').classList.remove('open');
     }
 
+    // ========================================
+    // 帮助面板
+    // ========================================
+    function showHelpModal() {
+        elements.helpModal.classList.add('open');
+    }
+
+    function hideHelpModal() {
+        elements.helpModal.classList.remove('open');
+    }
+
     async function shutdownServer() {
         try {
             const response = await fetch('/api/shutdown', {
@@ -1253,6 +1273,7 @@
             } else {
                 closeHistory();
                 hideExitModal();
+                hideHelpModal();
             }
         }
 
@@ -1261,6 +1282,14 @@
             if (document.activeElement !== elements.codeInput) {
                 e.preventDefault();
                 toggleFullscreen();
+            }
+        }
+
+        // ?: 显示帮助面板（仅当不在输入框中时）
+        if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+            if (document.activeElement !== elements.codeInput) {
+                e.preventDefault();
+                showHelpModal();
             }
         }
 

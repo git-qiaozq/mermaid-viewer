@@ -1246,6 +1246,67 @@ body {
 }
 
 /* ========================================
+   帮助面板
+   ======================================== */
+.help-dialog {
+    max-width: 500px;
+}
+
+.help-body {
+    padding: 16px 24px !important;
+}
+
+.help-section {
+    margin-bottom: 20px;
+}
+
+.help-section:last-child {
+    margin-bottom: 0;
+}
+
+.help-section h4 {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-muted);
+}
+
+.help-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+}
+
+.help-keys {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.help-keys kbd {
+    display: inline-block;
+    padding: 4px 8px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 2px 0 var(--border-default);
+}
+
+.help-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* ========================================
    响应式设计
    ======================================== */
 @media (max-width: 768px) {

@@ -616,6 +616,19 @@
                 embed.innerHTML = `<div class="error-message">Mermaid 渲染错误: ${e.message}</div>`;
             }
         }
+
+        // 处理锚点链接点击，实现预览区内部滚动
+        const links = elements.previewContent.querySelectorAll('a[href^="#"]');
+        links.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = link.getAttribute('href').slice(1);
+                const targetElement = elements.previewContent.querySelector(`#${CSS.escape(targetId)}`);
+                if (targetElement) {
+                    targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
     }
 
     // ========================================

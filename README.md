@@ -22,10 +22,16 @@
 
 ### 1. 启动服务器
 
+**方式一：命令行启动（显示控制台）**
+
 ```bash
 cd mermaid-viewer
 python server.py
 ```
+
+**方式二：无窗口启动（Windows 推荐）**
+
+双击 `start.pyw` 文件，服务器将在后台运行，不显示控制台窗口。
 
 服务器默认运行在 `http://localhost:8080`
 
@@ -131,7 +137,8 @@ pie title 项目时间分配
 
 ```
 mermaid-viewer/
-├── server.py              # Python HTTP 服务器
+├── server.py              # Python HTTP 服务器（命令行启动）
+├── start.pyw              # 无窗口启动脚本（Windows 双击启动）
 ├── README.md              # 使用说明
 ├── examples/              # 示例文件
 │   ├── flowchart.mmd      # 流程图示例

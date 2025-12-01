@@ -140,7 +140,7 @@
     // ========================================
     // 初始化 Mermaid
     // ========================================
-    
+
     // Mermaid 暗黑主题配置
     const MERMAID_DARK_THEME = {
         darkMode: true,
@@ -368,7 +368,7 @@
 
         // 文件上传
         elements.fileInput.addEventListener('change', handleFileUpload);
-        
+
         // 上传按钮点击
         document.getElementById('btn-upload').addEventListener('click', () => {
             elements.fileInput.click();
@@ -418,8 +418,8 @@
             if (e.target.id === 'delete-favorite-modal') hideDeleteFavoriteModal();
         });
 
-        // 键盘快捷键
-        document.addEventListener('keydown', handleKeydown);
+        // 键盘快捷键（使用捕获阶段，优先于浏览器插件处理）
+        document.addEventListener('keydown', handleKeydown, true);
 
         // 退出按钮
         document.getElementById('btn-exit').addEventListener('click', showExitModal);
@@ -456,7 +456,7 @@
 
         // 示例下拉菜单
         document.getElementById('btn-examples').addEventListener('click', toggleExamplesDropdown);
-        
+
         // 示例项点击事件
         elements.examplesMenu.querySelectorAll('.dropdown-item').forEach(item => {
             item.addEventListener('click', () => {
@@ -771,11 +771,11 @@
                 throw new Error(`HTTP ${response.status}`);
             }
             const content = await response.text();
-            
+
             // 设置内容到编辑器
             elements.codeInput.value = content;
             handleInputChange();
-            
+
             // 查找示例名称
             const example = EXAMPLES.find(e => e.file === filename);
             const exampleName = example ? example.name : filename;
@@ -854,7 +854,7 @@
             description: 'SVG 图片',
             accept: { 'image/svg+xml': ['.svg'] }
         });
-        
+
         if (success) {
             showToast('SVG 导出成功', 'success');
         }
@@ -866,28 +866,28 @@
     async function exportPNG(svgElement) {
         // 克隆 SVG 以获取完整尺寸
         const clonedSvg = svgElement.cloneNode(true);
-        
+
         // 获取 SVG 的实际尺寸（优先使用 viewBox，其次使用 width/height 属性）
         let svgWidth, svgHeight;
-        
+
         const viewBox = svgElement.getAttribute('viewBox');
         if (viewBox) {
             const parts = viewBox.split(/\s+|,/);
             svgWidth = parseFloat(parts[2]);
             svgHeight = parseFloat(parts[3]);
         }
-        
+
         // 如果没有 viewBox，尝试获取 width/height 属性
         if (!svgWidth || !svgHeight) {
             const widthAttr = svgElement.getAttribute('width');
             const heightAttr = svgElement.getAttribute('height');
-            
+
             if (widthAttr && heightAttr) {
                 svgWidth = parseFloat(widthAttr);
                 svgHeight = parseFloat(heightAttr);
             }
         }
-        
+
         // 如果还是获取不到，使用 getBBox() 获取实际内容边界
         if (!svgWidth || !svgHeight) {
             try {
@@ -901,20 +901,20 @@
                 svgHeight = rect.height;
             }
         }
-        
+
         // 确保尺寸有效
         svgWidth = Math.max(svgWidth, 100);
         svgHeight = Math.max(svgHeight, 100);
-        
+
         // 设置克隆 SVG 的尺寸属性，确保完整渲染
         clonedSvg.setAttribute('width', svgWidth);
         clonedSvg.setAttribute('height', svgHeight);
-        
+
         // 添加背景色（根据当前主题）
         const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
         const bgColor = currentTheme === 'dark' ? '#0d1117' : '#ffffff';
         clonedSvg.style.backgroundColor = bgColor;
-        
+
         // 创建 canvas
         const scale = 2; // 高清导出
         const canvas = document.createElement('canvas');
@@ -940,13 +940,13 @@
                 canvas.toBlob(async (blob) => {
                     // 生成默认文件名
                     const defaultFilename = `mermaid-${formatDateForFilename()}.png`;
-                    
+
                     // 使用另存为对话框下载
                     const success = await saveFileWithDialog(blob, defaultFilename, {
                         description: 'PNG 图片',
                         accept: { 'image/png': ['.png'] }
                     });
-                    
+
                     if (success) {
                         showToast('PNG 导出成功', 'success');
                     }
@@ -971,17 +971,17 @@
         try {
             // 克隆 SVG 以获取完整尺寸
             const clonedSvg = svgElement.cloneNode(true);
-            
+
             // 获取 SVG 的实际尺寸
             let svgWidth, svgHeight;
-            
+
             const viewBox = svgElement.getAttribute('viewBox');
             if (viewBox) {
                 const parts = viewBox.split(/\s+|,/);
                 svgWidth = parseFloat(parts[2]);
                 svgHeight = parseFloat(parts[3]);
             }
-            
+
             if (!svgWidth || !svgHeight) {
                 const widthAttr = svgElement.getAttribute('width');
                 const heightAttr = svgElement.getAttribute('height');
@@ -990,7 +990,7 @@
                     svgHeight = parseFloat(heightAttr);
                 }
             }
-            
+
             if (!svgWidth || !svgHeight) {
                 try {
                     const bbox = svgElement.getBBox();
@@ -1002,18 +1002,18 @@
                     svgHeight = rect.height;
                 }
             }
-            
+
             svgWidth = Math.max(svgWidth, 100);
             svgHeight = Math.max(svgHeight, 100);
-            
+
             clonedSvg.setAttribute('width', svgWidth);
             clonedSvg.setAttribute('height', svgHeight);
-            
+
             // 背景色（根据当前主题）
             const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
             const bgColor = currentTheme === 'dark' ? '#0d1117' : '#ffffff';
             clonedSvg.style.backgroundColor = bgColor;
-            
+
             // 创建 canvas
             const scale = 2;
             const canvas = document.createElement('canvas');
@@ -1075,7 +1075,7 @@
                         accept: fileType.accept
                     }]
                 });
-                
+
                 const writable = await handle.createWritable();
                 await writable.write(blob);
                 await writable.close();
@@ -1159,20 +1159,32 @@
     function initPanning() {
         const wrapper = elements.previewWrapper;
 
+        // 双击预览区切换全屏（作为 F 键的替代方案）
+        wrapper.addEventListener('dblclick', (e) => {
+            // 如果双击的是按钮等交互元素，不切换全屏
+            if (e.target.closest('button, a, input')) return;
+            toggleFullscreen();
+        });
+
         // 鼠标按下开始拖拽
         wrapper.addEventListener('mousedown', (e) => {
             // 忽略右键和中键
             if (e.button !== 0) return;
-            
+
             // 如果点击的是按钮等交互元素，不启动拖拽
             if (e.target.closest('button, a, input')) return;
+
+            // 移除输入元素的焦点，以便快捷键能正常工作
+            if (document.activeElement && document.activeElement !== document.body) {
+                document.activeElement.blur();
+            }
 
             state.isPanning = true;
             state.panStart = {
                 x: e.clientX - state.panOffset.x,
                 y: e.clientY - state.panOffset.y
             };
-            
+
             wrapper.classList.add('panning');
             e.preventDefault();
         });
@@ -1185,7 +1197,7 @@
                 x: e.clientX - state.panStart.x,
                 y: e.clientY - state.panStart.y
             };
-            
+
             applyTransform();
         });
 
@@ -1208,7 +1220,7 @@
         // ========================================
         // 触摸事件支持
         // ========================================
-        
+
         // 触摸开始
         wrapper.addEventListener('touchstart', (e) => {
             if (e.touches.length === 1) {
@@ -1247,10 +1259,10 @@
                 const currentDistance = getTouchDistance(e.touches);
                 const scale = currentDistance / state.touchStartDistance;
                 let newZoom = state.touchStartZoom * scale;
-                
+
                 // 限制缩放范围
                 newZoom = Math.max(CONFIG.ZOOM_MIN, Math.min(CONFIG.ZOOM_MAX, newZoom));
-                
+
                 state.currentZoom = newZoom;
                 applyTransform();
                 elements.zoomLevel.textContent = `${Math.round(state.currentZoom * 100)}%`;
@@ -1297,7 +1309,7 @@
     // ========================================
     function toggleFullscreen() {
         state.isFullscreen = !state.isFullscreen;
-        
+
         if (state.isFullscreen) {
             elements.mainContent.classList.add('fullscreen-preview');
             elements.fullscreenBtn.classList.add('active');
@@ -1412,7 +1424,7 @@
         // 绑定点击事件
         elements.historyList.querySelectorAll('.history-item').forEach(item => {
             item.addEventListener('click', (e) => {
-                if (!e.target.closest('.history-item-delete') && 
+                if (!e.target.closest('.history-item-delete') &&
                     !e.target.closest('.history-item-favorite') &&
                     !e.target.closest('.history-item-title.editable')) {
                     loadFromHistory(parseInt(item.dataset.id));
@@ -1565,7 +1577,7 @@
         // 绑定点击事件
         elements.favoritesList.querySelectorAll('.history-item').forEach(item => {
             item.addEventListener('click', (e) => {
-                if (!e.target.closest('.history-item-delete') && 
+                if (!e.target.closest('.history-item-delete') &&
                     !e.target.closest('.history-item-favorite') &&
                     !e.target.closest('.history-item-title.editable')) {
                     loadFromFavorites(parseInt(item.dataset.id));
@@ -1613,10 +1625,10 @@
     // ========================================
     function startInlineEdit(titleEl, source) {
         const id = parseInt(titleEl.dataset.id);
-        const item = source === 'history' 
+        const item = source === 'history'
             ? state.history.find(h => h.id === id)
             : state.favorites.find(f => f.id === id);
-        
+
         if (!item) return;
 
         const currentTitle = item.title || '';
@@ -1731,7 +1743,7 @@
         }
 
         const title = elements.favoriteTitle.value.trim();
-        
+
         // 添加到收藏
         const favoriteItem = {
             id: Date.now(),
@@ -1755,13 +1767,13 @@
         renderHistory(); // 更新历史列表中的收藏状态和标题
 
         hideFavoriteModal();
-        
+
         // 切换到收藏标签页
         switchTab('favorites');
-        
+
         // 显示收藏成功动画和提示
         showToast('已添加到收藏', 'success');
-        
+
         // 高亮刚添加的收藏项
         setTimeout(() => {
             const newItem = elements.favoritesList.querySelector(`[data-id="${favoriteItem.id}"]`);
@@ -1904,19 +1916,19 @@
     function toggleTheme() {
         const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        
+
         document.documentElement.setAttribute('data-theme', newTheme);
         localStorage.setItem('mermaid-viewer-theme', newTheme);
-        
+
         // 重新初始化 Mermaid 以应用新主题
         mermaid.initialize({
             startOnLoad: false,
             theme: 'base',
             themeVariables: getMermaidThemeVariables()
         });
-        
+
         showToast(newTheme === 'dark' ? '已切换到暗黑模式' : '已切换到亮色模式', 'success');
-        
+
         // 如果有图表，重新渲染以适应新主题
         if (elements.codeInput.value.trim()) {
             handleInputChange();
@@ -1994,6 +2006,29 @@
     // ========================================
     // 键盘快捷键
     // ========================================
+    
+    /**
+     * 检查当前焦点是否在可编辑元素中
+     * 用于判断是否应该触发快捷键，避免与正常输入冲突
+     */
+    function isInEditableElement() {
+        const activeElement = document.activeElement;
+        if (!activeElement) return false;
+        
+        // 检查是否是输入元素（INPUT、TEXTAREA）
+        const tagName = activeElement.tagName.toUpperCase();
+        if (tagName === 'INPUT' || tagName === 'TEXTAREA') {
+            return true;
+        }
+        
+        // 检查是否是可编辑内容
+        if (activeElement.isContentEditable) {
+            return true;
+        }
+        
+        return false;
+    }
+    
     function handleKeydown(e) {
         // Ctrl/Cmd + S: 保存到历史
         if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -2033,18 +2068,21 @@
             }
         }
 
-        // F: 切换全屏预览（仅当不在输入框中时）
-        if (e.key === 'f' || e.key === 'F') {
-            if (document.activeElement !== elements.codeInput) {
+        // F: 切换全屏预览（仅当不在任何输入元素中时）
+        if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            if (!isInEditableElement()) {
                 e.preventDefault();
+                e.stopPropagation(); // 阻止事件传播给浏览器插件
                 toggleFullscreen();
+                return;
             }
         }
 
-        // ?: 显示帮助面板（仅当不在输入框中时）
+        // ?: 显示帮助面板（仅当不在任何输入元素中时）
         if (e.key === '?' || (e.shiftKey && e.key === '/')) {
-            if (document.activeElement !== elements.codeInput) {
+            if (!isInEditableElement()) {
                 e.preventDefault();
+                e.stopPropagation();
                 showHelpModal();
             }
         }

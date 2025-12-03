@@ -2201,6 +2201,16 @@ body {
     color: var(--text-primary);
 }
 
+.toc-item.active {
+    background: rgba(88, 166, 255, 0.15);
+    color: var(--accent-cyan);
+    border-left-color: var(--accent-cyan);
+}
+
+.toc-item.active::before {
+    background: var(--accent-cyan) !important;
+}
+
 .toc-item:active {
     background: var(--bg-tertiary);
 }

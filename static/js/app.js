@@ -1582,6 +1582,57 @@
     function showTOCPanel() {
         if (elements.tocContainer) {
             elements.tocContainer.classList.add('open');
+            // 展开时更新当前活动章节
+            updateActiveHeading();
+        }
+    }
+
+    /**
+     * 更新当前活动的章节高亮
+     */
+    function updateActiveHeading() {
+        if (!elements.tocList || !elements.previewWrapper) return;
+
+        const headings = elements.previewContent.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        if (headings.length === 0) return;
+
+        // 获取预览区的滚动位置
+        const scrollTop = elements.previewWrapper.scrollTop;
+        const offset = 60; // 偏移量，提前高亮
+
+        // 找到当前可见的章节
+        let currentHeading = null;
+        for (const heading of headings) {
+            if (heading.offsetTop - offset <= scrollTop) {
+                currentHeading = heading;
+            } else {
+                break;
+            }
+        }
+
+        // 如果没找到（在最顶部），使用第一个标题
+        if (!currentHeading && headings.length > 0) {
+            currentHeading = headings[0];
+        }
+
+        if (!currentHeading) return;
+
+        // 移除所有高亮
+        const tocItems = elements.tocList.querySelectorAll('.toc-item');
+        tocItems.forEach(item => item.classList.remove('active'));
+
+        // 高亮当前项
+        const activeItem = elements.tocList.querySelector(`[data-target="${CSS.escape(currentHeading.id)}"]`);
+        if (activeItem) {
+            activeItem.classList.add('active');
+
+            // 滚动目录列表使高亮项可见
+            const tocListRect = elements.tocList.getBoundingClientRect();
+            const itemRect = activeItem.getBoundingClientRect();
+
+            if (itemRect.top < tocListRect.top || itemRect.bottom > tocListRect.bottom) {
+                activeItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
     }
 

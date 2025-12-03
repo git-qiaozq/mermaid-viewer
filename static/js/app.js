@@ -55,7 +55,10 @@
         // 触摸相关状态
         isTouching: false,
         touchStartDistance: 0,
-        touchStartZoom: 1
+        touchStartZoom: 1,
+        // 同步滚动状态
+        isSyncScrolling: false,      // 是否正在同步滚动（防止循环触发）
+        syncScrollEnabled: true      // 是否启用同步滚动
     };
 
     // ========================================
@@ -135,6 +138,9 @@
 
         // 初始化预览区拖拽平移
         initPanning();
+
+        // 初始化同步滚动
+        initSyncScroll();
     }
 
     // ========================================
@@ -1371,6 +1377,64 @@
         const dx = touches[0].clientX - touches[1].clientX;
         const dy = touches[0].clientY - touches[1].clientY;
         return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    // ========================================
+    // 同步滚动功能
+    // ========================================
+    function initSyncScroll() {
+        const codeInput = elements.codeInput;
+        const previewWrapper = elements.previewWrapper;
+        
+        /**
+         * 计算滚动比例
+         * @param {HTMLElement} element - 滚动元素
+         * @returns {number} 滚动比例 (0-1)
+         */
+        function getScrollRatio(element) {
+            const maxScroll = element.scrollHeight - element.clientHeight;
+            if (maxScroll <= 0) return 0;
+            return element.scrollTop / maxScroll;
+        }
+        
+        /**
+         * 设置滚动位置
+         * @param {HTMLElement} element - 目标元素
+         * @param {number} ratio - 滚动比例 (0-1)
+         */
+        function setScrollByRatio(element, ratio) {
+            const maxScroll = element.scrollHeight - element.clientHeight;
+            if (maxScroll <= 0) return;
+            element.scrollTop = ratio * maxScroll;
+        }
+        
+        // 监听左侧输入框滚动 -> 同步到右侧预览区
+        codeInput.addEventListener('scroll', () => {
+            if (!state.syncScrollEnabled || state.isSyncScrolling) return;
+            
+            state.isSyncScrolling = true;
+            const ratio = getScrollRatio(codeInput);
+            setScrollByRatio(previewWrapper, ratio);
+            
+            // 延迟重置标志，避免快速滚动时的抖动
+            requestAnimationFrame(() => {
+                state.isSyncScrolling = false;
+            });
+        });
+        
+        // 监听右侧预览区滚动 -> 同步到左侧输入框
+        previewWrapper.addEventListener('scroll', () => {
+            if (!state.syncScrollEnabled || state.isSyncScrolling) return;
+            
+            state.isSyncScrolling = true;
+            const ratio = getScrollRatio(previewWrapper);
+            setScrollByRatio(codeInput, ratio);
+            
+            // 延迟重置标志，避免快速滚动时的抖动
+            requestAnimationFrame(() => {
+                state.isSyncScrolling = false;
+            });
+        });
     }
 
     // ========================================

@@ -279,6 +279,32 @@ console.log('Hello World');
                         </div>
                     </div>
                 </div>
+                <!-- 目录导航（放在 preview-wrapper 外部，固定在预览区右上角） -->
+                <div class="toc-container" id="toc-container">
+                    <button class="toc-trigger" id="toc-trigger" title="目录导航">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="3" y1="6" x2="21" y2="6" />
+                            <line x1="3" y1="12" x2="21" y2="12" />
+                            <line x1="3" y1="18" x2="21" y2="18" />
+                        </svg>
+                    </button>
+                    <div class="toc-panel" id="toc-panel">
+                        <div class="toc-header">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="8" y1="6" x2="21" y2="6" />
+                                <line x1="8" y1="12" x2="21" y2="12" />
+                                <line x1="8" y1="18" x2="21" y2="18" />
+                                <line x1="3" y1="6" x2="3.01" y2="6" />
+                                <line x1="3" y1="12" x2="3.01" y2="12" />
+                                <line x1="3" y1="18" x2="3.01" y2="18" />
+                            </svg>
+                            <span>目录</span>
+                        </div>
+                        <div class="toc-list" id="toc-list">
+                            <!-- 动态生成目录项 -->
+                        </div>
+                    </div>
+                </div>
             </section>
         </main>
 

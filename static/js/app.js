@@ -58,7 +58,9 @@
         touchStartZoom: 1,
         // 同步滚动状态
         isSyncScrolling: false,      // 是否正在同步滚动（防止循环触发）
-        syncScrollEnabled: true      // 是否启用同步滚动
+        syncScrollEnabled: true,     // 是否启用同步滚动
+        // 目录导航状态
+        tocHideTimer: null           // 目录隐藏延时定时器
     };
 
     // ========================================
@@ -85,7 +87,12 @@
         fullscreenBtn: null,
         examplesDropdown: null,
         examplesMenu: null,
-        helpModal: null
+        helpModal: null,
+        // TOC 目录导航
+        tocContainer: null,
+        tocTrigger: null,
+        tocPanel: null,
+        tocList: null
     };
 
     // ========================================
@@ -114,6 +121,11 @@
         elements.examplesDropdown = document.getElementById('examples-dropdown');
         elements.examplesMenu = document.getElementById('examples-menu');
         elements.helpModal = document.getElementById('help-modal');
+        // TOC 目录导航
+        elements.tocContainer = document.getElementById('toc-container');
+        elements.tocTrigger = document.getElementById('toc-trigger');
+        elements.tocPanel = document.getElementById('toc-panel');
+        elements.tocList = document.getElementById('toc-list');
 
         // 初始化主题
         initTheme();
@@ -141,6 +153,9 @@
 
         // 初始化同步滚动
         initSyncScroll();
+
+        // 初始化目录导航
+        initTOC();
     }
 
     // ========================================
@@ -687,6 +702,9 @@
                 </div>
             `;
 
+            // Mermaid 图表没有标题，隐藏目录
+            hideTOC();
+
         } catch (error) {
             // 尝试获取更详细的错误信息
             let errorMsg = error.message || '未知错误';
@@ -748,6 +766,9 @@
                 }
             });
         });
+
+        // 生成目录导航
+        generateTOC();
     }
 
     // ========================================
@@ -764,6 +785,8 @@
                 <p>输入内容后将在此处显示预览</p>
             </div>
         `;
+        // 空状态时隐藏目录
+        hideTOC();
     }
 
     // ========================================
@@ -1435,6 +1458,140 @@
                 state.isSyncScrolling = false;
             });
         });
+    }
+
+    // ========================================
+    // 目录导航 (TOC)
+    // ========================================
+
+    /**
+     * 初始化目录导航
+     */
+    function initTOC() {
+        if (!elements.tocContainer) return;
+
+        // 鼠标进入容器区域 - 显示面板
+        elements.tocContainer.addEventListener('mouseenter', () => {
+            // 清除隐藏定时器
+            if (state.tocHideTimer) {
+                clearTimeout(state.tocHideTimer);
+                state.tocHideTimer = null;
+            }
+            showTOCPanel();
+        });
+
+        // 鼠标离开容器区域 - 延迟隐藏面板
+        elements.tocContainer.addEventListener('mouseleave', () => {
+            // 延迟 200ms 隐藏，防止误触
+            state.tocHideTimer = setTimeout(() => {
+                hideTOCPanel();
+            }, 200);
+        });
+    }
+
+    /**
+     * 生成目录
+     */
+    function generateTOC() {
+        if (!elements.tocContainer || !elements.tocList) return;
+
+        // 获取所有标题元素
+        const headings = elements.previewContent.querySelectorAll('h1, h2, h3, h4, h5, h6');
+
+        // 没有标题则隐藏目录按钮
+        if (headings.length === 0) {
+            hideTOC();
+            return;
+        }
+
+        // 生成目录项
+        const tocItems = Array.from(headings).map(heading => ({
+            level: parseInt(heading.tagName[1]),
+            text: heading.textContent.trim(),
+            id: heading.id
+        }));
+
+        // 渲染目录列表
+        renderTOCList(tocItems);
+
+        // 显示目录按钮
+        showTOC();
+    }
+
+    /**
+     * 渲染目录列表
+     */
+    function renderTOCList(items) {
+        if (items.length === 0) {
+            elements.tocList.innerHTML = '<div class="toc-empty">暂无目录</div>';
+            return;
+        }
+
+        elements.tocList.innerHTML = items.map(item => `
+            <button class="toc-item" data-level="${item.level}" data-target="${item.id}" title="${escapeHtml(item.text)}">
+                ${escapeHtml(item.text)}
+            </button>
+        `).join('');
+
+        // 绑定点击事件
+        elements.tocList.querySelectorAll('.toc-item').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = btn.dataset.target;
+                scrollToHeading(targetId);
+                // 点击后立即收起目录
+                hideTOCPanel();
+            });
+        });
+    }
+
+    /**
+     * 滚动到指定标题
+     */
+    function scrollToHeading(id) {
+        if (!id) return;
+
+        const targetElement = elements.previewContent.querySelector(`#${CSS.escape(id)}`);
+        if (targetElement) {
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    /**
+     * 显示目录按钮
+     */
+    function showTOC() {
+        if (elements.tocContainer) {
+            elements.tocContainer.classList.add('visible');
+        }
+    }
+
+    /**
+     * 隐藏目录按钮
+     */
+    function hideTOC() {
+        if (elements.tocContainer) {
+            elements.tocContainer.classList.remove('visible');
+            hideTOCPanel();
+        }
+    }
+
+    /**
+     * 显示目录面板
+     */
+    function showTOCPanel() {
+        if (elements.tocContainer) {
+            elements.tocContainer.classList.add('open');
+        }
+    }
+
+    /**
+     * 隐藏目录面板
+     */
+    function hideTOCPanel() {
+        if (elements.tocContainer) {
+            elements.tocContainer.classList.remove('open');
+        }
     }
 
     // ========================================

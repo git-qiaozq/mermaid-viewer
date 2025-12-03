@@ -327,36 +327,92 @@
     // ========================================
     // 初始化 Marked (Markdown 解析器)
     // ========================================
+    
+    // 用于跟踪标题 ID，避免重复
+    const headingIdCounter = {};
+    
+    /**
+     * 将标题文本转换为锚点 ID
+     * 支持中文和英文，处理特殊字符
+     */
+    function generateHeadingId(text) {
+        // 移除 HTML 标签
+        let id = text.replace(/<[^>]*>/g, '');
+        // 转小写（仅英文部分）
+        id = id.toLowerCase();
+        // 将空格替换为连字符
+        id = id.replace(/\s+/g, '-');
+        // 移除不安全的字符，保留中文、字母、数字、连字符和下划线
+        id = id.replace(/[^\u4e00-\u9fa5a-z0-9\-_]/g, '');
+        // 移除首尾的连字符
+        id = id.replace(/^-+|-+$/g, '');
+        
+        // 如果 ID 为空，使用默认值
+        if (!id) {
+            id = 'heading';
+        }
+        
+        // 处理重复 ID
+        if (headingIdCounter[id] !== undefined) {
+            headingIdCounter[id]++;
+            id = `${id}-${headingIdCounter[id]}`;
+        } else {
+            headingIdCounter[id] = 0;
+        }
+        
+        return id;
+    }
+    
+    /**
+     * 重置标题 ID 计数器（每次渲染 Markdown 时调用）
+     */
+    function resetHeadingIdCounter() {
+        for (const key in headingIdCounter) {
+            delete headingIdCounter[key];
+        }
+    }
+    
     function initMarked() {
-        // 配置 marked
-        marked.setOptions({
+        // 配置 marked - 适配 marked v15+ 的新 API
+        marked.use({
             gfm: true,
             breaks: true,
-            highlight: function (code, lang) {
-                if (lang && hljs.getLanguage(lang)) {
-                    try {
-                        return hljs.highlight(code, { language: lang }).value;
-                    } catch (e) {
-                        console.error('Highlight error:', e);
+            renderer: {
+                // 处理代码块
+                code({ text, lang }) {
+                    // Mermaid 代码块
+                    if (lang === 'mermaid') {
+                        const id = `mermaid-embed-${state.mermaidCounter++}`;
+                        return `<div class="mermaid-embed" id="${id}">${escapeHtml(text)}</div>`;
                     }
+                    
+                    // 其他代码块 - 使用 highlight.js 高亮
+                    let highlighted;
+                    const language = lang || '';
+                    if (language && hljs.getLanguage(language)) {
+                        try {
+                            highlighted = hljs.highlight(text, { language }).value;
+                        } catch (e) {
+                            console.error('Highlight error:', e);
+                            highlighted = escapeHtml(text);
+                        }
+                    } else {
+                        highlighted = hljs.highlightAuto(text).value;
+                    }
+                    
+                    const langClass = language ? ` class="language-${escapeHtml(language)}"` : '';
+                    return `<pre><code${langClass}>${highlighted}</code></pre>\n`;
+                },
+                
+                // 处理标题 - 自动添加 id 属性用于锚点跳转
+                heading({ tokens, depth, text }) {
+                    const id = generateHeadingId(text);
+                    // 使用 marked.parseInline 递归渲染标题内的 tokens
+                    const renderedText = marked.parseInline(tokens.map(t => t.raw).join(''));
+                    return `<h${depth} id="${id}">${renderedText}</h${depth}>\n`;
                 }
-                return hljs.highlightAuto(code).value;
             }
         });
-
-        // 自定义渲染器处理 Mermaid 代码块
-        const renderer = new marked.Renderer();
-        const originalCode = renderer.code.bind(renderer);
-
-        renderer.code = function (code, language) {
-            if (language === 'mermaid') {
-                const id = `mermaid-embed-${state.mermaidCounter++}`;
-                return `<div class="mermaid-embed" id="${id}">${escapeHtml(code)}</div>`;
-            }
-            return originalCode(code, language);
-        };
-
-        marked.setOptions({ renderer });
     }
 
     // ========================================
@@ -639,6 +695,9 @@
     // 渲染 Markdown
     // ========================================
     async function renderMarkdown(content) {
+        // 重置标题 ID 计数器，避免重复渲染时 ID 累加
+        resetHeadingIdCounter();
+        
         // 使用 marked 解析 Markdown
         const html = marked.parse(content);
 
@@ -647,6 +706,16 @@
                 ${html}
             </div>
         `;
+
+        // 为所有标题添加 id 属性，支持锚点跳转
+        const headings = elements.previewContent.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        headings.forEach(heading => {
+            // 如果标题还没有 id，则根据文本内容生成一个
+            if (!heading.id) {
+                const id = generateHeadingId(heading.textContent);
+                heading.id = id;
+            }
+        });
 
         // 渲染嵌入的 Mermaid 图表
         const mermaidEmbeds = elements.previewContent.querySelectorAll('.mermaid-embed');
@@ -666,7 +735,7 @@
         links.forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
-                const targetId = link.getAttribute('href').slice(1);
+                const targetId = decodeURIComponent(link.getAttribute('href').slice(1));
                 const targetElement = elements.previewContent.querySelector(`#${CSS.escape(targetId)}`);
                 if (targetElement) {
                     targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });

@@ -584,6 +584,65 @@
         const trimmed = content.trim();
         if (!trimmed) return 'empty';
 
+        // 检测 JSON（优先级较高，因为 JSON 有明确的格式）
+        // 首先尝试直接解析
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+            try {
+                JSON.parse(trimmed);
+                return 'json';
+            } catch (e) {
+                // 直接解析失败，尝试智能提取 JSON
+                // 找到最后一个匹配的 } 或 ]
+                const startChar = trimmed[0];
+                const endChar = startChar === '{' ? '}' : ']';
+                let depth = 0;
+                let inString = false;
+                let escapeNext = false;
+                let lastValidEnd = -1;
+                
+                for (let i = 0; i < trimmed.length; i++) {
+                    const char = trimmed[i];
+                    
+                    if (escapeNext) {
+                        escapeNext = false;
+                        continue;
+                    }
+                    
+                    if (char === '\\' && inString) {
+                        escapeNext = true;
+                        continue;
+                    }
+                    
+                    if (char === '"') {
+                        inString = !inString;
+                        continue;
+                    }
+                    
+                    if (inString) continue;
+                    
+                    if (char === '{' || char === '[') {
+                        depth++;
+                    } else if (char === '}' || char === ']') {
+                        depth--;
+                        if (depth === 0) {
+                            lastValidEnd = i;
+                        }
+                    }
+                }
+                
+                // 如果找到了完整的 JSON 结构
+                if (lastValidEnd > 0) {
+                    const extractedJson = trimmed.substring(0, lastValidEnd + 1);
+                    try {
+                        JSON.parse(extractedJson);
+                        return 'json';
+                    } catch (e2) {
+                        // 提取的内容也不是有效 JSON，继续检测其他类型
+                    }
+                }
+            }
+        }
+
         // Mermaid 图表类型关键字
         const mermaidPatterns = [
             /^graph\s+(TB|BT|LR|RL|TD)/i,
@@ -651,7 +710,8 @@
             'empty': '等待输入',
             'auto': '自动检测',
             'mermaid': 'Mermaid',
-            'markdown': 'Markdown'
+            'markdown': 'Markdown',
+            'json': 'JSON'
         };
         elements.detectedType.textContent = typeNames[type] || type;
     }
@@ -668,6 +728,8 @@
         try {
             if (type === 'mermaid') {
                 await renderMermaid(content);
+            } else if (type === 'json') {
+                renderJSON(content);
             } else {
                 await renderMarkdown(content);
             }
@@ -714,6 +776,208 @@
             throw new Error(`Mermaid 渲染错误: ${errorMsg}`);
         }
     }
+
+    // ========================================
+    // 渲染 JSON
+    // ========================================
+    function renderJSON(content) {
+        try {
+            const trimmed = content.trim();
+            let jsonContent = trimmed;
+            let data;
+            
+            // 尝试直接解析
+            try {
+                data = JSON.parse(trimmed);
+            } catch (e) {
+                // 直接解析失败，尝试智能提取 JSON
+                const startChar = trimmed[0];
+                let depth = 0;
+                let inString = false;
+                let escapeNext = false;
+                let lastValidEnd = -1;
+                
+                for (let i = 0; i < trimmed.length; i++) {
+                    const char = trimmed[i];
+                    
+                    if (escapeNext) {
+                        escapeNext = false;
+                        continue;
+                    }
+                    
+                    if (char === '\\' && inString) {
+                        escapeNext = true;
+                        continue;
+                    }
+                    
+                    if (char === '"') {
+                        inString = !inString;
+                        continue;
+                    }
+                    
+                    if (inString) continue;
+                    
+                    if (char === '{' || char === '[') {
+                        depth++;
+                    } else if (char === '}' || char === ']') {
+                        depth--;
+                        if (depth === 0) {
+                            lastValidEnd = i;
+                        }
+                    }
+                }
+                
+                if (lastValidEnd > 0) {
+                    jsonContent = trimmed.substring(0, lastValidEnd + 1);
+                    data = JSON.parse(jsonContent);
+                } else {
+                    throw new Error('无法提取有效的 JSON 内容');
+                }
+            }
+            
+            const html = buildJSONTree(data, '', true);
+            
+            elements.previewContent.innerHTML = `
+                <div class="json-preview">
+                    <div class="json-tree">${html}</div>
+                </div>
+            `;
+
+            // 绑定折叠事件
+            bindJSONFoldEvents();
+
+            // JSON 没有标题，隐藏目录
+            hideTOC();
+
+        } catch (error) {
+            throw new Error(`JSON 解析错误: ${error.message}`);
+        }
+    }
+
+    /**
+     * 递归构建 JSON 树形结构 HTML
+     * @param {any} data - JSON 数据
+     * @param {string} key - 当前键名（空字符串表示根节点）
+     * @param {boolean} isLast - 是否是父级的最后一个子元素
+     * @returns {string} HTML 字符串
+     */
+    function buildJSONTree(data, key, isLast) {
+        const type = getJSONType(data);
+        const comma = isLast ? '' : '<span class="json-comma">,</span>';
+        const keyHtml = key !== '' ? `<span class="json-key">"${escapeHtml(key)}"</span><span class="json-colon">: </span>` : '';
+
+        if (type === 'object') {
+            const entries = Object.entries(data);
+            if (entries.length === 0) {
+                return `<div class="json-line">${keyHtml}<span class="json-brace">{}</span>${comma}</div>`;
+            }
+            
+            const childrenHtml = entries.map(([k, v], index) => 
+                buildJSONTree(v, k, index === entries.length - 1)
+            ).join('');
+
+            return `
+                <div class="json-node json-object">
+                    <div class="json-line json-collapsible" data-expanded="true" onclick="window.toggleJSONFold(this)">
+                        <span class="json-fold-btn">
+                            <svg class="json-fold-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </span>
+                        ${keyHtml}<span class="json-brace">{</span>
+                        <span class="json-preview-hint">${entries.length} ${entries.length === 1 ? 'property' : 'properties'}</span>
+                    </div>
+                    <div class="json-children">${childrenHtml}</div>
+                    <div class="json-line"><span class="json-brace">}</span>${comma}</div>
+                </div>
+            `;
+        }
+
+        if (type === 'array') {
+            if (data.length === 0) {
+                return `<div class="json-line">${keyHtml}<span class="json-bracket">[]</span>${comma}</div>`;
+            }
+
+            const childrenHtml = data.map((item, index) => 
+                buildJSONTree(item, '', index === data.length - 1)
+            ).join('');
+
+            return `
+                <div class="json-node json-array">
+                    <div class="json-line json-collapsible" data-expanded="true" onclick="window.toggleJSONFold(this)">
+                        <span class="json-fold-btn">
+                            <svg class="json-fold-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                        </span>
+                        ${keyHtml}<span class="json-bracket">[</span>
+                        <span class="json-preview-hint">${data.length} ${data.length === 1 ? 'item' : 'items'}</span>
+                    </div>
+                    <div class="json-children">${childrenHtml}</div>
+                    <div class="json-line"><span class="json-bracket">]</span>${comma}</div>
+                </div>
+            `;
+        }
+
+        // 基本类型
+        let valueHtml = '';
+        switch (type) {
+            case 'string':
+                valueHtml = `<span class="json-string">"${escapeHtml(data)}"</span>`;
+                break;
+            case 'number':
+                valueHtml = `<span class="json-number">${data}</span>`;
+                break;
+            case 'boolean':
+                valueHtml = `<span class="json-boolean">${data}</span>`;
+                break;
+            case 'null':
+                valueHtml = `<span class="json-null">null</span>`;
+                break;
+        }
+
+        return `<div class="json-line">${keyHtml}${valueHtml}${comma}</div>`;
+    }
+
+    /**
+     * 获取 JSON 值的类型
+     */
+    function getJSONType(value) {
+        if (value === null) return 'null';
+        if (Array.isArray(value)) return 'array';
+        return typeof value;
+    }
+
+    /**
+     * 绑定 JSON 折叠事件（现在使用内联 onclick，此函数保留兼容性）
+     */
+    function bindJSONFoldEvents() {
+        // 事件已通过内联 onclick 处理，无需额外绑定
+    }
+
+    /**
+     * 切换 JSON 节点展开/折叠状态（暴露到全局以供内联 onclick 调用）
+     */
+    window.toggleJSONFold = function(lineEl) {
+        const isExpanded = lineEl.dataset.expanded === 'true';
+        const node = lineEl.closest('.json-node');
+        // 使用 :scope 选择器确保只选中直接子元素
+        const children = node.querySelector(':scope > .json-children');
+        
+        if (!children) return;
+        
+        if (isExpanded) {
+            // 折叠
+            lineEl.dataset.expanded = 'false';
+            children.style.display = 'none';
+            lineEl.classList.add('is-collapsed');
+        } else {
+            // 展开
+            lineEl.dataset.expanded = 'true';
+            children.style.display = 'block';
+            lineEl.classList.remove('is-collapsed');
+        }
+    };
 
     // ========================================
     // 渲染 Markdown
@@ -1271,6 +1535,9 @@
 
             // 如果点击的是按钮等交互元素，不启动拖拽
             if (e.target.closest('button, a, input')) return;
+            
+            // 如果点击的是 JSON 折叠元素，不启动拖拽
+            if (e.target.closest('.json-collapsible')) return;
 
             // 移除输入元素的焦点，以便快捷键能正常工作
             if (document.activeElement && document.activeElement !== document.body) {
@@ -1738,10 +2005,11 @@
 
         elements.historyList.innerHTML = state.history.map(item => {
             const isFavorited = state.favorites.some(f => f.content === item.content);
+            const typeLabels = { mermaid: 'Mermaid', markdown: 'Markdown', json: 'JSON' };
             return `
             <div class="history-item" data-id="${item.id}">
                 <div class="history-item-header">
-                    <span class="history-item-type ${item.type}">${item.type === 'mermaid' ? 'Mermaid' : 'Markdown'}</span>
+                    <span class="history-item-type ${item.type}">${typeLabels[item.type] || item.type}</span>
                     <span class="history-item-title editable" data-id="${item.id}" data-source="history" title="点击编辑标题">${item.title ? escapeHtml(item.title) : '<span class="title-placeholder">添加标题</span>'}</span>
                     <span class="history-item-time">${formatTime(item.timestamp)}</span>
                     <div class="history-item-actions">
@@ -1891,10 +2159,11 @@
             return;
         }
 
+        const typeLabels = { mermaid: 'Mermaid', markdown: 'Markdown', json: 'JSON' };
         elements.favoritesList.innerHTML = state.favorites.map(item => `
             <div class="history-item favorite-item" data-id="${item.id}">
                 <div class="history-item-header">
-                    <span class="history-item-type ${item.type}">${item.type === 'mermaid' ? 'Mermaid' : 'Markdown'}</span>
+                    <span class="history-item-type ${item.type}">${typeLabels[item.type] || item.type}</span>
                     <span class="history-item-title editable" data-id="${item.id}" data-source="favorites" title="点击编辑标题">${item.title ? escapeHtml(item.title) : '<span class="title-placeholder">添加标题</span>'}</span>
                     <span class="history-item-time">${formatTime(item.timestamp)}</span>
                     <div class="history-item-actions">

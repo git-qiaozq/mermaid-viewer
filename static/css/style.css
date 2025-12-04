@@ -2294,3 +2294,190 @@ body {
 [data-theme="light"] .toc-header {
     background: var(--bg-secondary);
 }
+
+/* ========================================
+   JSON 预览样式
+   ======================================== */
+.json-preview {
+    max-width: 100%;
+    padding: 20px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-default);
+    overflow-x: auto;
+}
+
+.json-tree {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+/* JSON 行 */
+.json-line {
+    padding: 2px 0;
+    padding-left: 24px;
+    white-space: nowrap;
+    position: relative;
+}
+
+/* 可折叠行 */
+.json-collapsible {
+    cursor: pointer;
+    padding-left: 0;
+    user-select: none;
+}
+
+.json-collapsible:hover {
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+}
+
+/* 折叠按钮 */
+.json-fold-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-right: 4px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    vertical-align: middle;
+}
+
+.json-fold-btn:hover {
+    background: var(--bg-tertiary);
+}
+
+.json-fold-icon {
+    width: 14px;
+    height: 14px;
+    color: var(--text-muted);
+    transition: transform var(--transition-fast);
+    pointer-events: none; /* 让点击穿透到父元素 */
+}
+
+/* 折叠状态 */
+.json-collapsible[data-expanded="false"] .json-fold-icon,
+.json-collapsible.is-collapsed .json-fold-icon {
+    transform: rotate(-90deg);
+}
+
+.json-collapsible[data-expanded="false"] + .json-children + .json-line {
+    display: inline;
+}
+
+/* 子节点容器 */
+.json-children {
+    padding-left: 24px;
+    border-left: 1px solid var(--border-muted);
+    margin-left: 9px;
+    transition: all var(--transition-fast);
+}
+
+.json-children.collapsed {
+    display: none;
+}
+
+/* 折叠时显示预览提示 */
+.json-preview-hint {
+    display: none;
+    margin-left: 8px;
+    padding: 2px 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+}
+
+.json-collapsible[data-expanded="false"] .json-preview-hint {
+    display: inline;
+}
+
+/* JSON 节点 */
+.json-node {
+    position: relative;
+}
+
+/* JSON 括号和方括号 */
+.json-brace,
+.json-bracket {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* JSON 冒号和逗号 */
+.json-colon {
+    color: var(--text-muted);
+}
+
+.json-comma {
+    color: var(--text-muted);
+}
+
+/* JSON 键名 */
+.json-key {
+    color: var(--accent-cyan);
+}
+
+/* JSON 字符串值 */
+.json-string {
+    color: var(--accent-green);
+    word-break: break-all;
+    white-space: pre-wrap;
+}
+
+/* JSON 数字值 */
+.json-number {
+    color: var(--accent-orange);
+}
+
+/* JSON 布尔值 */
+.json-boolean {
+    color: var(--accent-purple);
+    font-weight: 500;
+}
+
+/* JSON null 值 */
+.json-null {
+    color: var(--accent-red);
+    font-style: italic;
+}
+
+/* 历史记录 JSON 类型标签 */
+.history-item-type.json {
+    background: rgba(240, 136, 62, 0.15);
+    color: var(--accent-orange);
+}
+
+/* 亮色主题 JSON 样式微调 */
+[data-theme="light"] .json-preview {
+    background: var(--bg-secondary);
+}
+
+[data-theme="light"] .json-key {
+    color: var(--accent-cyan);
+}
+
+[data-theme="light"] .json-string {
+    color: var(--accent-green);
+}
+
+[data-theme="light"] .json-number {
+    color: var(--accent-orange);
+}
+
+[data-theme="light"] .json-boolean {
+    color: var(--accent-purple);
+}
+
+[data-theme="light"] .json-null {
+    color: var(--accent-red);
+}
+
+[data-theme="light"] .json-children {
+    border-left-color: var(--border-default);
+}

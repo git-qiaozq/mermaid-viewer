@@ -746,6 +746,9 @@
     // 渲染 Mermaid
     // ========================================
     async function renderMermaid(content) {
+        // 移除 JSON 滚动同步
+        removeJSONScrollSync();
+        
         const id = `mermaid-${Date.now()}`;
 
         try {
@@ -848,10 +851,99 @@
 
             // JSON 没有标题，隐藏目录
             hideTOC();
+            
+            // 格式化 JSON 并更新输入框（仅当内容不同时）
+            const formattedJSON = JSON.stringify(data, null, 2);
+            if (elements.codeInput.value !== formattedJSON) {
+                // 保存当前光标位置
+                const scrollTop = elements.codeInput.scrollTop;
+                
+                // 更新内容
+                elements.codeInput.value = formattedJSON;
+                
+                // 更新字符计数
+                elements.charCount.textContent = `${formattedJSON.length} 字符`;
+                
+                // 恢复滚动位置
+                elements.codeInput.scrollTop = scrollTop;
+            }
+            
+            // 设置 JSON 滚动同步
+            setupJSONScrollSync();
 
         } catch (error) {
             throw new Error(`JSON 解析错误: ${error.message}`);
         }
+    }
+    
+    /**
+     * 设置 JSON 预览和输入框的滚动同步
+     */
+    function setupJSONScrollSync() {
+        // 移除旧的滚动监听器
+        if (state.jsonScrollHandler) {
+            elements.previewWrapper.removeEventListener('scroll', state.jsonScrollHandler);
+            elements.codeInput.removeEventListener('scroll', state.inputScrollHandler);
+        }
+        
+        // 标记是否正在同步滚动，防止循环触发
+        let isSyncing = false;
+        
+        // 预览区滚动时同步输入框
+        state.jsonScrollHandler = (e) => {
+            if (isSyncing) return;
+            isSyncing = true;
+            
+            const previewWrapper = elements.previewWrapper;
+            const input = elements.codeInput;
+            
+            // 计算滚动比例
+            const scrollRatio = previewWrapper.scrollTop / (previewWrapper.scrollHeight - previewWrapper.clientHeight || 1);
+            
+            // 应用到输入框
+            input.scrollTop = scrollRatio * (input.scrollHeight - input.clientHeight);
+            
+            setTimeout(() => { isSyncing = false; }, 10);
+        };
+        
+        // 输入框滚动时同步预览区
+        state.inputScrollHandler = (e) => {
+            if (isSyncing) return;
+            isSyncing = true;
+            
+            const previewWrapper = elements.previewWrapper;
+            const input = elements.codeInput;
+            
+            // 计算滚动比例
+            const scrollRatio = input.scrollTop / (input.scrollHeight - input.clientHeight || 1);
+            
+            // 应用到预览区
+            previewWrapper.scrollTop = scrollRatio * (previewWrapper.scrollHeight - previewWrapper.clientHeight);
+            
+            setTimeout(() => { isSyncing = false; }, 10);
+        };
+        
+        // 绑定事件
+        elements.previewWrapper.addEventListener('scroll', state.jsonScrollHandler);
+        elements.codeInput.addEventListener('scroll', state.inputScrollHandler);
+        
+        // 标记当前是 JSON 模式
+        state.isJSONMode = true;
+    }
+    
+    /**
+     * 移除 JSON 滚动同步
+     */
+    function removeJSONScrollSync() {
+        if (state.jsonScrollHandler) {
+            elements.previewWrapper.removeEventListener('scroll', state.jsonScrollHandler);
+            state.jsonScrollHandler = null;
+        }
+        if (state.inputScrollHandler) {
+            elements.codeInput.removeEventListener('scroll', state.inputScrollHandler);
+            state.inputScrollHandler = null;
+        }
+        state.isJSONMode = false;
     }
 
     /**
@@ -983,6 +1075,9 @@
     // 渲染 Markdown
     // ========================================
     async function renderMarkdown(content) {
+        // 移除 JSON 滚动同步
+        removeJSONScrollSync();
+        
         // 重置标题 ID 计数器，避免重复渲染时 ID 累加
         resetHeadingIdCounter();
         

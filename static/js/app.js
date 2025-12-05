@@ -838,7 +838,11 @@
                 }
             }
             
-            const html = buildJSONTree(data, '', true);
+            // 重置懒加载状态
+            jsonNodeIdCounter = 0;
+            window.jsonLazyData = {};
+            
+            const html = buildJSONTree(data, '', true, 0);
             
             elements.previewContent.innerHTML = `
                 <div class="json-preview">
@@ -852,20 +856,27 @@
             // JSON 没有标题，隐藏目录
             hideTOC();
             
-            // 格式化 JSON 并更新输入框（仅当内容不同时）
-            const formattedJSON = JSON.stringify(data, null, 2);
-            if (elements.codeInput.value !== formattedJSON) {
-                // 保存当前光标位置
-                const scrollTop = elements.codeInput.scrollTop;
-                
-                // 更新内容
-                elements.codeInput.value = formattedJSON;
-                
-                // 更新字符计数
-                elements.charCount.textContent = `${formattedJSON.length} 字符`;
-                
-                // 恢复滚动位置
-                elements.codeInput.scrollTop = scrollTop;
+            // 格式化 JSON 并更新输入框
+            // 对于大型 JSON（超过 500KB），跳过格式化以避免内存问题
+            const MAX_FORMAT_SIZE = 500 * 1024; // 500KB
+            if (content.length <= MAX_FORMAT_SIZE) {
+                const formattedJSON = JSON.stringify(data, null, 2);
+                if (elements.codeInput.value !== formattedJSON) {
+                    // 保存当前光标位置
+                    const scrollTop = elements.codeInput.scrollTop;
+                    
+                    // 更新内容
+                    elements.codeInput.value = formattedJSON;
+                    
+                    // 更新字符计数
+                    elements.charCount.textContent = `${formattedJSON.length} 字符`;
+                    
+                    // 恢复滚动位置
+                    elements.codeInput.scrollTop = scrollTop;
+                }
+            } else {
+                // 大型 JSON 只显示原始大小
+                elements.charCount.textContent = `${content.length} 字符 (大文件，未格式化)`;
             }
             
             // 设置 JSON 滚动同步
@@ -946,17 +957,32 @@
         state.isJSONMode = false;
     }
 
+    // JSON 懒加载配置
+    const JSON_LAZY_CONFIG = {
+        maxInitialDepth: 2,      // 初始展开的最大深度
+        lazyLoadThreshold: 100,  // 子节点超过此数量时启用懒加载
+        batchSize: 50            // 每次懒加载的批次大小
+    };
+    
+    // 全局 JSON 数据存储（用于懒加载）
+    let jsonDataStore = new WeakMap();
+    let jsonNodeIdCounter = 0;
+
     /**
-     * 递归构建 JSON 树形结构 HTML
+     * 递归构建 JSON 树形结构 HTML（带懒加载支持）
      * @param {any} data - JSON 数据
      * @param {string} key - 当前键名（空字符串表示根节点）
      * @param {boolean} isLast - 是否是父级的最后一个子元素
+     * @param {number} depth - 当前深度
      * @returns {string} HTML 字符串
      */
-    function buildJSONTree(data, key, isLast) {
+    function buildJSONTree(data, key, isLast, depth = 0) {
         const type = getJSONType(data);
         const comma = isLast ? '' : '<span class="json-comma">,</span>';
         const keyHtml = key !== '' ? `<span class="json-key">"${escapeHtml(key)}"</span><span class="json-colon">: </span>` : '';
+        
+        // 生成唯一节点 ID
+        const nodeId = `json-node-${jsonNodeIdCounter++}`;
 
         if (type === 'object') {
             const entries = Object.entries(data);
@@ -964,13 +990,27 @@
                 return `<div class="json-line">${keyHtml}<span class="json-brace">{}</span>${comma}</div>`;
             }
             
-            const childrenHtml = entries.map(([k, v], index) => 
-                buildJSONTree(v, k, index === entries.length - 1)
+            // 判断是否需要懒加载
+            const shouldLazyLoad = depth >= JSON_LAZY_CONFIG.maxInitialDepth || 
+                                   entries.length > JSON_LAZY_CONFIG.lazyLoadThreshold;
+            
+            const isExpanded = !shouldLazyLoad;
+            
+            // 如果需要懒加载，存储数据
+            if (shouldLazyLoad) {
+                window.jsonLazyData[nodeId] = { data, key, isLast, depth };
+            }
+            
+            const childrenHtml = shouldLazyLoad ? '' : entries.map(([k, v], index) => 
+                buildJSONTree(v, k, index === entries.length - 1, depth + 1)
             ).join('');
 
+            // 存储数据供懒加载使用
+            const dataAttr = shouldLazyLoad ? `data-lazy="true" data-node-id="${nodeId}"` : '';
+
             return `
-                <div class="json-node json-object">
-                    <div class="json-line json-collapsible" data-expanded="true" onclick="window.toggleJSONFold(this)">
+                <div class="json-node json-object" id="${nodeId}">
+                    <div class="json-line json-collapsible" data-expanded="${isExpanded}" ${dataAttr} onclick="window.toggleJSONFold(this)">
                         <span class="json-fold-btn">
                             <svg class="json-fold-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="6 9 12 15 18 9"/>
@@ -979,7 +1019,7 @@
                         ${keyHtml}<span class="json-brace">{</span>
                         <span class="json-preview-hint">${entries.length} ${entries.length === 1 ? 'property' : 'properties'}</span>
                     </div>
-                    <div class="json-children">${childrenHtml}</div>
+                    <div class="json-children" style="${shouldLazyLoad ? 'display:none' : ''}">${childrenHtml}</div>
                     <div class="json-line"><span class="json-brace">}</span>${comma}</div>
                 </div>
             `;
@@ -990,13 +1030,27 @@
                 return `<div class="json-line">${keyHtml}<span class="json-bracket">[]</span>${comma}</div>`;
             }
 
-            const childrenHtml = data.map((item, index) => 
-                buildJSONTree(item, '', index === data.length - 1)
+            // 判断是否需要懒加载
+            const shouldLazyLoad = depth >= JSON_LAZY_CONFIG.maxInitialDepth || 
+                                   data.length > JSON_LAZY_CONFIG.lazyLoadThreshold;
+            
+            const isExpanded = !shouldLazyLoad;
+            
+            // 如果需要懒加载，存储数据
+            if (shouldLazyLoad) {
+                window.jsonLazyData[nodeId] = { data, key, isLast, depth };
+            }
+            
+            const childrenHtml = shouldLazyLoad ? '' : data.map((item, index) => 
+                buildJSONTree(item, '', index === data.length - 1, depth + 1)
             ).join('');
 
+            // 存储数据供懒加载使用
+            const dataAttr = shouldLazyLoad ? `data-lazy="true" data-node-id="${nodeId}"` : '';
+
             return `
-                <div class="json-node json-array">
-                    <div class="json-line json-collapsible" data-expanded="true" onclick="window.toggleJSONFold(this)">
+                <div class="json-node json-array" id="${nodeId}">
+                    <div class="json-line json-collapsible" data-expanded="${isExpanded}" ${dataAttr} onclick="window.toggleJSONFold(this)">
                         <span class="json-fold-btn">
                             <svg class="json-fold-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="6 9 12 15 18 9"/>
@@ -1005,17 +1059,19 @@
                         ${keyHtml}<span class="json-bracket">[</span>
                         <span class="json-preview-hint">${data.length} ${data.length === 1 ? 'item' : 'items'}</span>
                     </div>
-                    <div class="json-children">${childrenHtml}</div>
+                    <div class="json-children" style="${shouldLazyLoad ? 'display:none' : ''}">${childrenHtml}</div>
                     <div class="json-line"><span class="json-bracket">]</span>${comma}</div>
                 </div>
             `;
         }
 
-        // 基本类型
+        // 基本类型 - 对于超长字符串进行截断显示
         let valueHtml = '';
         switch (type) {
             case 'string':
-                valueHtml = `<span class="json-string">"${escapeHtml(data)}"</span>`;
+                const displayStr = data.length > 500 ? data.substring(0, 500) + '...' : data;
+                const truncatedAttr = data.length > 500 ? ' data-truncated="true"' : '';
+                valueHtml = `<span class="json-string"${truncatedAttr}>"${escapeHtml(displayStr)}"</span>`;
                 break;
             case 'number':
                 valueHtml = `<span class="json-number">${data}</span>`;
@@ -1046,6 +1102,73 @@
     function bindJSONFoldEvents() {
         // 事件已通过内联 onclick 处理，无需额外绑定
     }
+    
+    
+    /**
+     * 懒加载子节点内容
+     */
+    function lazyLoadJSONChildren(lineEl, node, children) {
+        const nodeId = lineEl.dataset.nodeId;
+        const storedData = window.jsonLazyData?.[nodeId];
+        
+        if (!storedData) {
+            console.warn('No lazy data found for node:', nodeId);
+            return;
+        }
+        
+        const { data, key, isLast, depth } = storedData;
+        const type = getJSONType(data);
+        
+        // 分批渲染以避免阻塞
+        if (type === 'object') {
+            const entries = Object.entries(data);
+            renderBatch(entries, children, depth, true);
+        } else if (type === 'array') {
+            renderBatch(data.map((item, i) => [i, item]), children, depth, false);
+        }
+        
+        // 标记已加载
+        lineEl.dataset.lazy = 'loaded';
+    }
+    
+    /**
+     * 分批渲染节点
+     */
+    function renderBatch(items, container, depth, isObject) {
+        const batchSize = JSON_LAZY_CONFIG.batchSize;
+        let currentIndex = 0;
+        
+        function renderNextBatch() {
+            const fragment = document.createDocumentFragment();
+            const end = Math.min(currentIndex + batchSize, items.length);
+            
+            for (let i = currentIndex; i < end; i++) {
+                const [key, value] = items[i];
+                const isLast = i === items.length - 1;
+                const html = buildJSONTree(value, isObject ? key : '', isLast, depth + 1);
+                
+                const temp = document.createElement('div');
+                temp.innerHTML = html;
+                while (temp.firstChild) {
+                    fragment.appendChild(temp.firstChild);
+                }
+            }
+            
+            container.appendChild(fragment);
+            currentIndex = end;
+            
+            // 如果还有更多项，使用 requestIdleCallback 或 setTimeout 继续
+            if (currentIndex < items.length) {
+                if (window.requestIdleCallback) {
+                    requestIdleCallback(renderNextBatch, { timeout: 100 });
+                } else {
+                    setTimeout(renderNextBatch, 0);
+                }
+            }
+        }
+        
+        renderNextBatch();
+    }
 
     /**
      * 切换 JSON 节点展开/折叠状态（暴露到全局以供内联 onclick 调用）
@@ -1064,6 +1187,10 @@
             children.style.display = 'none';
             lineEl.classList.add('is-collapsed');
         } else {
+            // 展开 - 检查是否需要懒加载
+            if (lineEl.dataset.lazy === 'true') {
+                lazyLoadJSONChildren(lineEl, node, children);
+            }
             // 展开
             lineEl.dataset.expanded = 'true';
             children.style.display = 'block';

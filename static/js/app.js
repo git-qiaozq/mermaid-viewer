@@ -693,8 +693,8 @@
             }
         }
 
-        // 如果有多个 Markdown 特征，判定为 Markdown
-        if (markdownScore >= 2) {
+        // 对于标题等典型 Markdown 特征，放宽阈值避免误判为 Mermaid
+        if (markdownScore >= 1) {
             return 'markdown';
         }
 

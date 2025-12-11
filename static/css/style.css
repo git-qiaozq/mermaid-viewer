@@ -2481,3 +2481,130 @@ body {
 [data-theme="light"] .json-children {
     border-left-color: var(--border-default);
 }
+
+/* ========================================
+   文件导出下拉菜单
+   ======================================== */
+.export-dropdown {
+    position: relative;
+}
+
+.export-dropdown .dropdown-trigger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.export-dropdown .dropdown-trigger svg {
+    width: 16px;
+    height: 16px;
+}
+
+.export-dropdown .dropdown-trigger .dropdown-arrow {
+    width: 14px;
+    height: 14px;
+    margin-left: 2px;
+    transition: transform var(--transition-fast);
+}
+
+.export-dropdown .dropdown-trigger:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--accent-cyan);
+}
+
+.export-dropdown.open .dropdown-trigger {
+    background: var(--bg-hover);
+    color: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+}
+
+.export-dropdown.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.export-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 220px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all var(--transition-fast);
+    z-index: 300;
+}
+
+.export-dropdown.open .export-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* 导出选项区块 */
+.export-section-markdown,
+.export-section-json {
+    display: none;
+}
+
+.export-section-markdown.visible,
+.export-section-json.visible {
+    display: block;
+}
+
+.export-section-empty {
+    display: block;
+    padding: 16px;
+}
+
+.export-section-empty.hidden {
+    display: none;
+}
+
+.export-empty-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.export-empty-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+/* 导出项悬停效果 */
+.export-menu .dropdown-item:hover {
+    background: var(--bg-hover);
+    color: var(--accent-cyan);
+}
+
+#btn-export-md:hover {
+    color: var(--accent-purple);
+}
+
+#btn-export-html:hover {
+    color: var(--accent-cyan);
+}
+
+#btn-export-json:hover {
+    color: var(--accent-orange);
+}

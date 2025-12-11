@@ -92,7 +92,13 @@
         tocContainer: null,
         tocTrigger: null,
         tocPanel: null,
-        tocList: null
+        tocList: null,
+        // 文件导出下拉菜单
+        exportDropdown: null,
+        exportMenu: null,
+        exportSectionMarkdown: null,
+        exportSectionJson: null,
+        exportSectionEmpty: null
     };
 
     // ========================================
@@ -126,6 +132,12 @@
         elements.tocTrigger = document.getElementById('toc-trigger');
         elements.tocPanel = document.getElementById('toc-panel');
         elements.tocList = document.getElementById('toc-list');
+        // 文件导出下拉菜单
+        elements.exportDropdown = document.getElementById('export-dropdown');
+        elements.exportMenu = document.getElementById('export-menu');
+        elements.exportSectionMarkdown = document.getElementById('export-section-markdown');
+        elements.exportSectionJson = document.getElementById('export-section-json');
+        elements.exportSectionEmpty = document.getElementById('export-section-empty');
 
         // 初始化主题
         initTheme();
@@ -516,6 +528,21 @@
             if (e.target.id === 'help-modal') hideHelpModal();
         });
 
+        // 文件导出下拉菜单
+        document.getElementById('btn-export-file').addEventListener('click', toggleExportDropdown);
+        document.getElementById('btn-export-md').addEventListener('click', () => {
+            exportMarkdown();
+            closeExportDropdown();
+        });
+        document.getElementById('btn-export-html').addEventListener('click', () => {
+            exportStyledHTML();
+            closeExportDropdown();
+        });
+        document.getElementById('btn-export-json').addEventListener('click', () => {
+            exportJSON();
+            closeExportDropdown();
+        });
+
         // 支持拖拽文件
         elements.codeInput.addEventListener('dragover', (e) => {
             e.preventDefault();
@@ -549,6 +576,9 @@
         document.addEventListener('click', (e) => {
             if (!elements.examplesDropdown.contains(e.target)) {
                 closeExamplesDropdown();
+            }
+            if (!elements.exportDropdown.contains(e.target)) {
+                closeExportDropdown();
             }
         });
     }
@@ -1346,6 +1376,36 @@
     }
 
     // ========================================
+    // 文件导出下拉菜单控制
+    // ========================================
+    function toggleExportDropdown() {
+        // 更新菜单可见性再显示
+        updateExportMenuVisibility();
+        elements.exportDropdown.classList.toggle('open');
+    }
+
+    function closeExportDropdown() {
+        elements.exportDropdown.classList.remove('open');
+    }
+
+    // ========================================
+    // 更新导出菜单选项可见性
+    // ========================================
+    function updateExportMenuVisibility() {
+        const content = elements.codeInput.value.trim();
+        const detectedType = detectContentType(content);
+
+        // 根据内容类型显示对应的导出选项
+        const showMarkdown = detectedType === 'markdown';
+        const showJson = detectedType === 'json';
+        const showEmpty = !showMarkdown && !showJson;
+
+        elements.exportSectionMarkdown.classList.toggle('visible', showMarkdown);
+        elements.exportSectionJson.classList.toggle('visible', showJson);
+        elements.exportSectionEmpty.classList.toggle('hidden', !showEmpty);
+    }
+
+    // ========================================
     // 加载示例文件
     // ========================================
     async function loadExample(filename) {
@@ -1708,6 +1768,394 @@
         const minute = String(now.getMinutes()).padStart(2, '0');
         const second = String(now.getSeconds()).padStart(2, '0');
         return `${year}${month}${day}_${hour}${minute}${second}`;
+    }
+
+    // ========================================
+    // 导出 Markdown 源文件
+    // ========================================
+    async function exportMarkdown() {
+        const content = elements.codeInput.value;
+        if (!content.trim()) {
+            showToast('没有可导出的内容', 'error');
+            return;
+        }
+
+        const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+        const defaultFilename = `document-${formatDateForFilename()}.md`;
+
+        const success = await saveFileWithDialog(blob, defaultFilename, {
+            description: 'Markdown 文件',
+            accept: { 'text/markdown': ['.md'] }
+        });
+
+        if (success) {
+            showToast('Markdown 文件导出成功', 'success');
+        }
+    }
+
+    // ========================================
+    // 导出带样式的 HTML 文件
+    // ========================================
+    async function exportStyledHTML() {
+        const markdownPreview = elements.previewContent.querySelector('.markdown-preview');
+        if (!markdownPreview) {
+            showToast('没有可导出的 Markdown 预览内容', 'error');
+            return;
+        }
+
+        // 获取当前主题
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+        const isDark = currentTheme === 'dark';
+
+        // 生成完整 HTML 文档
+        const htmlContent = generateStyledHTMLDocument(markdownPreview.innerHTML, isDark);
+        
+        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+        const defaultFilename = `document-${formatDateForFilename()}.html`;
+
+        const success = await saveFileWithDialog(blob, defaultFilename, {
+            description: 'HTML 文件',
+            accept: { 'text/html': ['.html'] }
+        });
+
+        if (success) {
+            showToast('HTML 文件导出成功', 'success');
+        }
+    }
+
+    // ========================================
+    // 生成带样式的 HTML 文档
+    // ========================================
+    function generateStyledHTMLDocument(contentHTML, isDark) {
+        const styles = isDark ? getDarkThemeStyles() : getLightThemeStyles();
+        
+        return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Document</title>
+    <style>
+        ${styles}
+    </style>
+</head>
+<body>
+    <div class="markdown-preview">
+        ${contentHTML}
+    </div>
+</body>
+</html>`;
+    }
+
+    // ========================================
+    // 暗黑主题样式
+    // ========================================
+    function getDarkThemeStyles() {
+        return `
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            line-height: 1.6;
+            padding: 40px;
+        }
+        
+        .markdown-preview {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .markdown-preview h1,
+        .markdown-preview h2,
+        .markdown-preview h3,
+        .markdown-preview h4,
+        .markdown-preview h5,
+        .markdown-preview h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+            color: #e6edf3;
+        }
+        
+        .markdown-preview h1 {
+            font-size: 2em;
+            padding-bottom: 0.3em;
+            border-bottom: 1px solid #30363d;
+        }
+        
+        .markdown-preview h2 {
+            font-size: 1.5em;
+            padding-bottom: 0.3em;
+            border-bottom: 1px solid #21262d;
+        }
+        
+        .markdown-preview h3 { font-size: 1.25em; }
+        .markdown-preview h4 { font-size: 1em; }
+        .markdown-preview h5 { font-size: 0.875em; }
+        .markdown-preview h6 { font-size: 0.85em; color: #8b949e; }
+        
+        .markdown-preview p { margin-bottom: 16px; }
+        
+        .markdown-preview a {
+            color: #58a6ff;
+            text-decoration: none;
+        }
+        .markdown-preview a:hover { text-decoration: underline; }
+        
+        .markdown-preview strong { color: #e6edf3; font-weight: 600; }
+        .markdown-preview em { font-style: italic; }
+        
+        .markdown-preview code {
+            padding: 0.2em 0.4em;
+            font-size: 85%;
+            background: #21262d;
+            border-radius: 6px;
+            font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+            color: #f0883e;
+        }
+        
+        .markdown-preview pre {
+            margin-bottom: 16px;
+            padding: 16px;
+            overflow-x: auto;
+            font-size: 85%;
+            line-height: 1.45;
+            background: #161b22;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+        }
+        
+        .markdown-preview pre code {
+            padding: 0;
+            background: transparent;
+            color: #e6edf3;
+            border: none;
+        }
+        
+        .markdown-preview blockquote {
+            margin-bottom: 16px;
+            padding: 0 1em;
+            color: #8b949e;
+            border-left: 4px solid #a371f7;
+        }
+        
+        .markdown-preview ul, .markdown-preview ol {
+            margin-bottom: 16px;
+            padding-left: 2em;
+        }
+        
+        .markdown-preview li { margin-bottom: 4px; }
+        
+        .markdown-preview hr {
+            margin: 24px 0;
+            border: none;
+            border-top: 1px solid #30363d;
+        }
+        
+        .markdown-preview table {
+            width: 100%;
+            margin-bottom: 16px;
+            border-collapse: collapse;
+        }
+        
+        .markdown-preview table th,
+        .markdown-preview table td {
+            padding: 8px 13px;
+            border: 1px solid #30363d;
+        }
+        
+        .markdown-preview table th {
+            background: #21262d;
+            font-weight: 600;
+        }
+        
+        .markdown-preview table tr:nth-child(even) {
+            background: #161b22;
+        }
+        
+        .markdown-preview img {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+        `;
+    }
+
+    // ========================================
+    // 亮色主题样式
+    // ========================================
+    function getLightThemeStyles() {
+        return `
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            color: #1f2328;
+            line-height: 1.6;
+            padding: 40px;
+        }
+        
+        .markdown-preview {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .markdown-preview h1,
+        .markdown-preview h2,
+        .markdown-preview h3,
+        .markdown-preview h4,
+        .markdown-preview h5,
+        .markdown-preview h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+            color: #1f2328;
+        }
+        
+        .markdown-preview h1 {
+            font-size: 2em;
+            padding-bottom: 0.3em;
+            border-bottom: 1px solid #d0d7de;
+        }
+        
+        .markdown-preview h2 {
+            font-size: 1.5em;
+            padding-bottom: 0.3em;
+            border-bottom: 1px solid #d8dee4;
+        }
+        
+        .markdown-preview h3 { font-size: 1.25em; }
+        .markdown-preview h4 { font-size: 1em; }
+        .markdown-preview h5 { font-size: 0.875em; }
+        .markdown-preview h6 { font-size: 0.85em; color: #59666e; }
+        
+        .markdown-preview p { margin-bottom: 16px; }
+        
+        .markdown-preview a {
+            color: #0969da;
+            text-decoration: none;
+        }
+        .markdown-preview a:hover { text-decoration: underline; }
+        
+        .markdown-preview strong { color: #1f2328; font-weight: 600; }
+        .markdown-preview em { font-style: italic; }
+        
+        .markdown-preview code {
+            padding: 0.2em 0.4em;
+            font-size: 85%;
+            background: #eaeef2;
+            border-radius: 6px;
+            font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+            color: #bc4c00;
+        }
+        
+        .markdown-preview pre {
+            margin-bottom: 16px;
+            padding: 16px;
+            overflow-x: auto;
+            font-size: 85%;
+            line-height: 1.45;
+            background: #f6f8fa;
+            border-radius: 8px;
+            border: 1px solid #d0d7de;
+        }
+        
+        .markdown-preview pre code {
+            padding: 0;
+            background: transparent;
+            color: #1f2328;
+            border: none;
+        }
+        
+        .markdown-preview blockquote {
+            margin-bottom: 16px;
+            padding: 0 1em;
+            color: #59666e;
+            border-left: 4px solid #8250df;
+        }
+        
+        .markdown-preview ul, .markdown-preview ol {
+            margin-bottom: 16px;
+            padding-left: 2em;
+        }
+        
+        .markdown-preview li { margin-bottom: 4px; }
+        
+        .markdown-preview hr {
+            margin: 24px 0;
+            border: none;
+            border-top: 1px solid #d0d7de;
+        }
+        
+        .markdown-preview table {
+            width: 100%;
+            margin-bottom: 16px;
+            border-collapse: collapse;
+        }
+        
+        .markdown-preview table th,
+        .markdown-preview table td {
+            padding: 8px 13px;
+            border: 1px solid #d0d7de;
+        }
+        
+        .markdown-preview table th {
+            background: #eaeef2;
+            font-weight: 600;
+        }
+        
+        .markdown-preview table tr:nth-child(even) {
+            background: #f6f8fa;
+        }
+        
+        .markdown-preview img {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+        `;
+    }
+
+    // ========================================
+    // 导出格式化的 JSON 文件
+    // ========================================
+    async function exportJSON() {
+        const content = elements.codeInput.value.trim();
+        if (!content) {
+            showToast('没有可导出的内容', 'error');
+            return;
+        }
+
+        try {
+            // 尝试解析并格式化 JSON
+            const parsed = JSON.parse(content);
+            const formatted = JSON.stringify(parsed, null, 2);
+            
+            const blob = new Blob([formatted], { type: 'application/json;charset=utf-8' });
+            const defaultFilename = `data-${formatDateForFilename()}.json`;
+
+            const success = await saveFileWithDialog(blob, defaultFilename, {
+                description: 'JSON 文件',
+                accept: { 'application/json': ['.json'] }
+            });
+
+            if (success) {
+                showToast('JSON 文件导出成功', 'success');
+            }
+        } catch (error) {
+            showToast('JSON 格式化失败: ' + error.message, 'error');
+        }
     }
 
     // ========================================

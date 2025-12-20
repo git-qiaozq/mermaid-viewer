@@ -231,6 +231,12 @@
                     <h2>输入</h2>
                     <div class="panel-actions">
                         <input type="file" id="file-input" accept=".md,.mmd,.txt,.markdown" style="display: none;">
+                        <button class="upload-btn" id="btn-open-folder" title="打开文件夹">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                            </svg>
+                            <span>打开文件夹</span>
+                        </button>
                         <button class="upload-btn" id="btn-upload" title="上传文件">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -265,6 +271,25 @@ console.log('Hello World');
                     <div class="editor-footer">
                         <span class="char-count">0 字符</span>
                         <span class="detected-type">自动检测</span>
+                    </div>
+                </div>
+                <!-- 文件夹导航（放在 editor-panel 内，固定在输入框右上角） -->
+                <div class="folder-navigator" id="folder-navigator">
+                    <button class="folder-nav-trigger" id="folder-nav-trigger" title="文件浏览">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z" />
+                        </svg>
+                    </button>
+                    <div class="folder-nav-panel" id="folder-nav-panel">
+                        <div class="folder-nav-header">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z" />
+                            </svg>
+                            <span id="folder-path-display">文件列表</span>
+                        </div>
+                        <div class="folder-file-list" id="folder-file-list">
+                            <!-- 动态生成文件列表 -->
+                        </div>
                     </div>
                 </div>
             </section>

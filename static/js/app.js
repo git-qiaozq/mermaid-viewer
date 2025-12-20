@@ -60,7 +60,11 @@
         isSyncScrolling: false,      // 是否正在同步滚动（防止循环触发）
         syncScrollEnabled: true,     // 是否启用同步滚动
         // 目录导航状态
-        tocHideTimer: null           // 目录隐藏延时定时器
+        tocHideTimer: null,          // 目录隐藏延时定时器
+        // 文件夹浏览状态
+        folderHandle: null,          // 文件夹句柄
+        folderFiles: [],             // 文件夹中的文件列表
+        folderName: ''               // 文件夹名称
     };
 
     // ========================================
@@ -98,7 +102,14 @@
         exportMenu: null,
         exportSectionMarkdown: null,
         exportSectionJson: null,
-        exportSectionEmpty: null
+        exportSectionEmpty: null,
+        // 文件夹导航
+        folderNavigator: null,
+        folderNavTrigger: null,
+        folderNavPanel: null,
+        folderFileList: null,
+        folderPathDisplay: null,
+        btnOpenFolder: null
     };
 
     // ========================================
@@ -138,6 +149,13 @@
         elements.exportSectionMarkdown = document.getElementById('export-section-markdown');
         elements.exportSectionJson = document.getElementById('export-section-json');
         elements.exportSectionEmpty = document.getElementById('export-section-empty');
+        // 文件夹导航
+        elements.folderNavigator = document.getElementById('folder-navigator');
+        elements.folderNavTrigger = document.getElementById('folder-nav-trigger');
+        elements.folderNavPanel = document.getElementById('folder-nav-panel');
+        elements.folderFileList = document.getElementById('folder-file-list');
+        elements.folderPathDisplay = document.getElementById('folder-path-display');
+        elements.btnOpenFolder = document.getElementById('btn-open-folder');
 
         // 初始化主题
         initTheme();
@@ -462,6 +480,32 @@
         document.getElementById('btn-upload').addEventListener('click', () => {
             elements.fileInput.click();
         });
+
+        // 打开文件夹按钮
+        elements.btnOpenFolder.addEventListener('click', openFolder);
+
+        // 文件夹导航悬停交互（带延迟防止误关闭）
+        if (elements.folderNavigator) {
+            let hoverTimer = null;
+            let leaveTimer = null;
+
+            elements.folderNavigator.addEventListener('mouseenter', () => {
+                // 清除离开定时器
+                if (leaveTimer) {
+                    clearTimeout(leaveTimer);
+                    leaveTimer = null;
+                }
+                // 立即显示
+                elements.folderNavigator.classList.add('hover-active');
+            });
+
+            elements.folderNavigator.addEventListener('mouseleave', () => {
+                // 延迟关闭，给用户时间移动到面板
+                leaveTimer = setTimeout(() => {
+                    elements.folderNavigator.classList.remove('hover-active');
+                }, 300); // 300ms 延迟
+            });
+        }
 
         // 模式切换
         document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -3422,6 +3466,165 @@
             hour: '2-digit',
             minute: '2-digit'
         });
+    }
+
+    // ========================================
+    // 文件夹浏览功能
+    // ========================================
+    
+    /**
+     * 打开文件夹选择器
+     */
+    async function openFolder() {
+        // 检查浏览器是否支持 File System Access API
+        if (!('showDirectoryPicker' in window)) {
+            showToast('您的浏览器不支持文件夹选择功能，请使用 Chrome 或 Edge 浏览器', 'error');
+            return;
+        }
+
+        try {
+            // 打开文件夹选择器
+            const dirHandle = await window.showDirectoryPicker({
+                mode: 'read'
+            });
+
+            // 保存文件夹句柄
+            state.folderHandle = dirHandle;
+            state.folderName = dirHandle.name;
+
+            // 扫描文件夹
+            await scanDirectory(dirHandle);
+
+            // 显示文件夹导航
+            showFolderNavigator();
+
+            showToast(`已打开文件夹: ${dirHandle.name}`, 'success');
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                console.error('打开文件夹失败:', error);
+                showToast('打开文件夹失败', 'error');
+            }
+        }
+    }
+
+    /**
+     * 扫描文件夹中的文件
+     */
+    async function scanDirectory(dirHandle) {
+        const files = [];
+        const supportedExtensions = ['.md', '.mmd', '.txt', '.markdown', '.json'];
+
+        try {
+            for await (const entry of dirHandle.values()) {
+                if (entry.kind === 'file') {
+                    const ext = getFileExtension(entry.name);
+                    if (supportedExtensions.includes(ext)) {
+                        files.push({
+                            name: entry.name,
+                            handle: entry,
+                            type: getFileType(ext)
+                        });
+                    }
+                }
+            }
+
+            // 按文件名排序
+            files.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+
+            state.folderFiles = files;
+            renderFileList();
+        } catch (error) {
+            console.error('扫描文件夹失败:', error);
+            showToast('扫描文件夹失败', 'error');
+        }
+    }
+
+    /**
+     * 获取文件扩展名
+     */
+    function getFileExtension(filename) {
+        const lastDot = filename.lastIndexOf('.');
+        return lastDot !== -1 ? filename.substring(lastDot).toLowerCase() : '';
+    }
+
+    /**
+     * 根据扩展名获取文件类型
+     */
+    function getFileType(ext) {
+        if (ext === '.mmd') return 'mermaid';
+        if (ext === '.md' || ext === '.markdown') return 'markdown';
+        if (ext === '.json') return 'json';
+        return 'text';
+    }
+
+    /**
+     * 显示文件夹导航
+     */
+    function showFolderNavigator() {
+        elements.folderNavigator.classList.add('visible');
+        elements.folderPathDisplay.textContent = state.folderName;
+    }
+
+    /**
+     * 渲染文件列表
+     */
+    function renderFileList() {
+        const fileList = elements.folderFileList;
+        fileList.innerHTML = '';
+
+        if (state.folderFiles.length === 0) {
+            fileList.innerHTML = '<div class="folder-empty">没有找到支持的文件</div>';
+            return;
+        }
+
+        state.folderFiles.forEach(file => {
+            const item = document.createElement('button');
+            item.className = 'folder-file-item';
+            item.innerHTML = `
+                ${getFileIcon(file.type)}
+                <span class="folder-file-name">${escapeHtml(file.name)}</span>
+            `;
+            item.addEventListener('click', () => loadFileFromFolder(file));
+            fileList.appendChild(item);
+        });
+    }
+
+    /**
+     * 获取文件类型图标
+     */
+    function getFileIcon(type) {
+        const icons = {
+            mermaid: '<svg class="folder-file-icon mermaid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h.01M7 12h.01M7 17h.01M12 7h5M12 12h5M12 17h5"/></svg>',
+            markdown: '<svg class="folder-file-icon markdown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/><path d="M9 9h1M9 13h6M9 17h6"/></svg>',
+            json: '<svg class="folder-file-icon json" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12h4M10 16h4"/></svg>',
+            text: '<svg class="folder-file-icon text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'
+        };
+        return icons[type] || icons.text;
+    }
+
+    /**
+     * 从文件夹加载文件
+     */
+    async function loadFileFromFolder(file) {
+        try {
+            const fileHandle = file.handle;
+            const fileData = await fileHandle.getFile();
+            const content = await fileData.text();
+
+            // 加载到编辑器
+            elements.codeInput.value = content;
+            handleInputChange();
+
+            // 关闭文件夹导航面板
+            if (elements.folderNavigator) {
+                elements.folderNavigator.classList.remove('hover-active');
+            }
+
+            showToast(`已加载: ${file.name}`, 'success');
+        } catch (error) {
+            console.error('加载文件失败:', error);
+            showToast('加载文件失败', 'error');
+        }
     }
 
     // ========================================

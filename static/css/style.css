@@ -667,15 +667,7 @@ body {
     box-sizing: border-box;
 }
 
-/* 添加底部占位元素，匹配左侧 editor-footer 的高度 */
-.preview-wrapper::after {
-    content: '';
-    display: block;
-    flex-shrink: 0;
-    height: 37px; /* 匹配 .editor-footer 的高度 (padding 8px*2 + border 1px + 内容 ~20px) */
-    background: var(--bg-secondary);
-    border-top: 1px solid var(--border-muted);
-}
+/* 底部占位元素已移除，避免在 markdown 预览中出现多余的背景条 */
 
 .preview-wrapper.panning {
     cursor: grabbing;

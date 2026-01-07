@@ -10,8 +10,8 @@
     // 配置
     // ========================================
     const CONFIG = {
-        MAX_HISTORY: 20,
-        MAX_FAVORITES: 10,
+        MAX_HISTORY: 30,
+        MAX_FAVORITES: 15,
         DEBOUNCE_DELAY: 500,
         STORAGE_KEY: 'mermaid-viewer-history',
         FAVORITES_KEY: 'mermaid-viewer-favorites',

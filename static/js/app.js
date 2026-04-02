@@ -64,7 +64,9 @@
         // 文件夹浏览状态
         folderHandle: null,          // 文件夹句柄
         folderFiles: [],             // 文件夹中的文件列表
-        folderName: ''               // 文件夹名称
+        folderName: '',              // 文件夹名称
+        currentDocumentDirHandle: null, // 当前文档所在目录句柄（用于解析相对资源）
+        localAssetUrls: []           // 当前渲染生成的本地资源 Blob URL
     };
 
     // ========================================
@@ -795,6 +797,7 @@
     // ========================================
     async function renderContent(content, type) {
         if (!content.trim()) {
+            cleanupLocalAssetUrls();
             showEmptyState();
             return;
         }
@@ -822,6 +825,7 @@
     async function renderMermaid(content) {
         // 移除 JSON 滚动同步
         removeJSONScrollSync();
+        cleanupLocalAssetUrls();
         
         const id = `mermaid-${Date.now()}`;
 
@@ -859,6 +863,7 @@
     // ========================================
     function renderJSON(content) {
         try {
+            cleanupLocalAssetUrls();
             const trimmed = content.trim();
             let jsonContent = trimmed;
             let data;
@@ -1278,6 +1283,7 @@
     async function renderMarkdown(content) {
         // 移除 JSON 滚动同步
         removeJSONScrollSync();
+        cleanupLocalAssetUrls();
         
         // 重置标题 ID 计数器，避免重复渲染时 ID 累加
         resetHeadingIdCounter();
@@ -1300,6 +1306,8 @@
                 heading.id = id;
             }
         });
+
+        await resolveMarkdownLocalImages();
 
         // 渲染嵌入的 Mermaid 图表
         const mermaidEmbeds = elements.previewContent.querySelectorAll('.mermaid-embed');
@@ -1329,6 +1337,80 @@
 
         // 生成目录导航
         generateTOC();
+    }
+
+    function cleanupLocalAssetUrls() {
+        state.localAssetUrls.forEach(url => URL.revokeObjectURL(url));
+        state.localAssetUrls = [];
+    }
+
+    function clearCurrentDocumentContext() {
+        state.currentDocumentDirHandle = null;
+    }
+
+    function isRelativeAssetPath(src) {
+        return Boolean(src) && !/^(?:[a-z]+:|\/\/|\/|#)/i.test(src);
+    }
+
+    async function getFileHandleByRelativePath(relativePath) {
+        if (!state.currentDocumentDirHandle) {
+            return null;
+        }
+
+        const normalizedPath = relativePath.split('#')[0].split('?')[0];
+        const segments = normalizedPath.split('/').filter(Boolean);
+
+        if (segments.length === 0) {
+            return null;
+        }
+
+        let currentDirHandle = state.currentDocumentDirHandle;
+
+        for (let i = 0; i < segments.length; i++) {
+            const segment = decodeURIComponent(segments[i]);
+
+            if (segment === '.') {
+                continue;
+            }
+
+            if (segment === '..') {
+                return null;
+            }
+
+            const isLastSegment = i === segments.length - 1;
+            if (isLastSegment) {
+                return await currentDirHandle.getFileHandle(segment);
+            }
+
+            currentDirHandle = await currentDirHandle.getDirectoryHandle(segment);
+        }
+
+        return null;
+    }
+
+    async function resolveMarkdownLocalImages() {
+        const images = elements.previewContent.querySelectorAll('.markdown-preview img[src]');
+
+        for (const image of images) {
+            const originalSrc = image.getAttribute('src');
+            if (!isRelativeAssetPath(originalSrc)) {
+                continue;
+            }
+
+            try {
+                const fileHandle = await getFileHandleByRelativePath(originalSrc);
+                if (!fileHandle) {
+                    continue;
+                }
+
+                const file = await fileHandle.getFile();
+                const blobUrl = URL.createObjectURL(file);
+                state.localAssetUrls.push(blobUrl);
+                image.src = blobUrl;
+            } catch (error) {
+                console.warn(`无法解析 Markdown 图片: ${originalSrc}`, error);
+            }
+        }
     }
 
     // ========================================
@@ -1377,6 +1459,7 @@
     // 清空内容
     // ========================================
     function handleClear() {
+        clearCurrentDocumentContext();
         elements.codeInput.value = '';
         handleInputChange();
         showToast('内容已清空', 'info');
@@ -1454,6 +1537,7 @@
     // ========================================
     async function loadExample(filename) {
         try {
+            clearCurrentDocumentContext();
             const response = await fetch(`/examples/${filename}`);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
@@ -1488,6 +1572,7 @@
 
         const reader = new FileReader();
         reader.onload = (e) => {
+            clearCurrentDocumentContext();
             elements.codeInput.value = e.target.result;
             handleInputChange();
             showToast(`已加载文件: ${file.name}`, 'success');
@@ -3610,6 +3695,7 @@
             const fileHandle = file.handle;
             const fileData = await fileHandle.getFile();
             const content = await fileData.text();
+            state.currentDocumentDirHandle = state.folderHandle;
 
             // 加载到编辑器
             elements.codeInput.value = content;
@@ -3633,4 +3719,3 @@
     document.addEventListener('DOMContentLoaded', init);
 
 })();
-

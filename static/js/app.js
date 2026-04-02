@@ -63,8 +63,10 @@
         tocHideTimer: null,          // 目录隐藏延时定时器
         // 文件夹浏览状态
         folderHandle: null,          // 文件夹句柄
-        folderFiles: [],             // 文件夹中的文件列表
+        folderTree: null,            // 目录树根节点
         folderName: '',              // 文件夹名称
+        currentSelectedFilePath: '', // 当前选中的文件路径
+        folderSupportCache: new Map(), // 目录是否包含支持文件的缓存
         currentDocumentDirHandle: null, // 当前文档所在目录句柄（用于解析相对资源）
         localAssetUrls: []           // 当前渲染生成的本地资源 Blob URL
     };
@@ -1346,6 +1348,10 @@
 
     function clearCurrentDocumentContext() {
         state.currentDocumentDirHandle = null;
+        state.currentSelectedFilePath = '';
+        if (state.folderTree) {
+            renderFileList();
+        }
     }
 
     function isRelativeAssetPath(src) {
@@ -3556,6 +3562,8 @@
     // ========================================
     // 文件夹浏览功能
     // ========================================
+
+    const SUPPORTED_FILE_EXTENSIONS = ['.md', '.mmd', '.txt', '.markdown', '.json'];
     
     /**
      * 打开文件夹选择器
@@ -3576,9 +3584,14 @@
             // 保存文件夹句柄
             state.folderHandle = dirHandle;
             state.folderName = dirHandle.name;
+            state.currentDocumentDirHandle = null;
+            state.currentSelectedFilePath = '';
+            state.folderSupportCache = new Map();
+            state.folderTree = createDirectoryNode(dirHandle.name, dirHandle, '');
 
-            // 扫描文件夹
-            await scanDirectory(dirHandle);
+            // 加载根目录第一层内容
+            await loadDirectoryChildren(state.folderTree);
+            state.folderTree.isExpanded = true;
 
             // 显示文件夹导航
             showFolderNavigator();
@@ -3593,34 +3606,131 @@
     }
 
     /**
-     * 扫描文件夹中的文件
+     * 创建目录节点
      */
-    async function scanDirectory(dirHandle) {
-        const files = [];
-        const supportedExtensions = ['.md', '.mmd', '.txt', '.markdown', '.json'];
+    function createDirectoryNode(name, handle, path) {
+        return {
+            kind: 'directory',
+            name,
+            handle,
+            path,
+            children: [],
+            childrenLoaded: false,
+            isExpanded: false,
+            isLoading: false
+        };
+    }
+
+    /**
+     * 创建文件节点
+     */
+    function createFileNode(name, handle, path, parentHandle) {
+        return {
+            kind: 'file',
+            name,
+            handle,
+            path,
+            parentHandle,
+            type: getFileType(getFileExtension(name))
+        };
+    }
+
+    /**
+     * 拼接节点路径
+     */
+    function joinNodePath(parentPath, name) {
+        return parentPath ? `${parentPath}/${name}` : name;
+    }
+
+    /**
+     * 检查是否为支持的文件
+     */
+    function isSupportedFile(entryName) {
+        return SUPPORTED_FILE_EXTENSIONS.includes(getFileExtension(entryName));
+    }
+
+    /**
+     * 检查目录中是否存在支持文件
+     */
+    async function directoryHasSupportedContent(dirHandle, dirPath) {
+        if (state.folderSupportCache.has(dirPath)) {
+            return state.folderSupportCache.get(dirPath);
+        }
+
+        let hasSupportedContent = false;
 
         try {
             for await (const entry of dirHandle.values()) {
-                if (entry.kind === 'file') {
-                    const ext = getFileExtension(entry.name);
-                    if (supportedExtensions.includes(ext)) {
-                        files.push({
-                            name: entry.name,
-                            handle: entry,
-                            type: getFileType(ext)
-                        });
+                if (entry.kind === 'file' && isSupportedFile(entry.name)) {
+                    hasSupportedContent = true;
+                    break;
+                }
+
+                if (entry.kind === 'directory') {
+                    const childPath = joinNodePath(dirPath, entry.name);
+                    if (await directoryHasSupportedContent(entry, childPath)) {
+                        hasSupportedContent = true;
+                        break;
                     }
                 }
             }
+        } catch (error) {
+            console.error('检查目录内容失败:', error);
+        }
 
-            // 按文件名排序
-            files.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+        state.folderSupportCache.set(dirPath, hasSupportedContent);
+        return hasSupportedContent;
+    }
 
-            state.folderFiles = files;
-            renderFileList();
+    /**
+     * 按需加载目录直接子项
+     */
+    async function loadDirectoryChildren(directoryNode) {
+        if (!directoryNode || directoryNode.kind !== 'directory' || directoryNode.childrenLoaded || directoryNode.isLoading) {
+            return;
+        }
+
+        directoryNode.isLoading = true;
+        renderFileList();
+
+        try {
+            const childNodes = [];
+
+            for await (const entry of directoryNode.handle.values()) {
+                const childPath = joinNodePath(directoryNode.path, entry.name);
+
+                if (entry.kind === 'file') {
+                    if (!isSupportedFile(entry.name)) {
+                        continue;
+                    }
+
+                    childNodes.push(createFileNode(entry.name, entry, childPath, directoryNode.handle));
+                    continue;
+                }
+
+                const hasSupportedContent = await directoryHasSupportedContent(entry, childPath);
+                if (!hasSupportedContent) {
+                    continue;
+                }
+
+                childNodes.push(createDirectoryNode(entry.name, entry, childPath));
+            }
+
+            childNodes.sort((a, b) => {
+                if (a.kind !== b.kind) {
+                    return a.kind === 'directory' ? -1 : 1;
+                }
+                return a.name.localeCompare(b.name, 'zh-CN');
+            });
+
+            directoryNode.children = childNodes;
+            directoryNode.childrenLoaded = true;
         } catch (error) {
             console.error('扫描文件夹失败:', error);
             showToast('扫描文件夹失败', 'error');
+        } finally {
+            directoryNode.isLoading = false;
+            renderFileList();
         }
     }
 
@@ -3648,30 +3758,136 @@
     function showFolderNavigator() {
         elements.folderNavigator.classList.add('visible');
         elements.folderPathDisplay.textContent = state.folderName;
+        renderFileList();
     }
 
     /**
-     * 渲染文件列表
+     * 切换目录展开状态
+     */
+    async function toggleDirectoryNode(node) {
+        if (node.kind !== 'directory') {
+            return;
+        }
+
+        if (node.isExpanded) {
+            node.isExpanded = false;
+            renderFileList();
+            return;
+        }
+
+        node.isExpanded = true;
+        renderFileList();
+        await loadDirectoryChildren(node);
+        renderFileList();
+    }
+
+    /**
+     * 渲染目录树
      */
     function renderFileList() {
         const fileList = elements.folderFileList;
         fileList.innerHTML = '';
 
-        if (state.folderFiles.length === 0) {
+        if (!state.folderTree) {
             fileList.innerHTML = '<div class="folder-empty">没有找到支持的文件</div>';
             return;
         }
 
-        state.folderFiles.forEach(file => {
-            const item = document.createElement('button');
-            item.className = 'folder-file-item';
-            item.innerHTML = `
-                ${getFileIcon(file.type)}
-                <span class="folder-file-name">${escapeHtml(file.name)}</span>
-            `;
-            item.addEventListener('click', () => loadFileFromFolder(file));
-            fileList.appendChild(item);
+        if (state.folderTree.isLoading || !state.folderTree.childrenLoaded) {
+            fileList.innerHTML = '<div class="folder-empty">正在加载...</div>';
+            return;
+        }
+
+        if (state.folderTree.children.length === 0) {
+            fileList.innerHTML = '<div class="folder-empty">没有找到支持的文件</div>';
+            return;
+        }
+
+        state.folderTree.children.forEach(node => {
+            fileList.appendChild(renderTreeNode(node, 0));
         });
+    }
+
+    /**
+     * 渲染单个树节点
+     */
+    function renderTreeNode(node, depth) {
+        const wrapper = document.createElement('div');
+        wrapper.className = `folder-tree-node ${node.kind}`;
+
+        const item = document.createElement('button');
+        item.className = `folder-file-item folder-tree-item ${node.kind === 'directory' ? 'is-directory' : 'is-file'}`;
+        if (node.kind === 'file' && node.path === state.currentSelectedFilePath) {
+            item.classList.add('is-active');
+        }
+        item.style.setProperty('--tree-depth', depth);
+
+        const caret = document.createElement('span');
+        caret.className = `folder-tree-caret ${node.kind === 'directory' ? (node.isExpanded ? 'expanded' : 'collapsed') : 'hidden'}`;
+        caret.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 6 15 12 9 18"></polyline>
+            </svg>
+        `;
+
+        const iconHtml = node.kind === 'directory'
+            ? getFolderIcon(node.isExpanded)
+            : getFileIcon(node.type);
+
+        item.innerHTML = `
+            ${caret.outerHTML}
+            ${iconHtml}
+            <span class="folder-file-name">${escapeHtml(node.name)}</span>
+        `;
+
+        item.addEventListener('click', async () => {
+            if (node.kind === 'directory') {
+                await toggleDirectoryNode(node);
+                return;
+            }
+
+            await loadFileFromFolder(node);
+        });
+
+        wrapper.appendChild(item);
+
+        if (node.kind === 'directory' && node.isExpanded) {
+            const childrenContainer = document.createElement('div');
+            childrenContainer.className = 'folder-tree-children';
+            childrenContainer.style.setProperty('--tree-depth', depth + 1);
+
+            if (node.isLoading) {
+                const loading = document.createElement('div');
+                loading.className = 'folder-tree-loading';
+                loading.textContent = '正在加载...';
+                childrenContainer.appendChild(loading);
+            } else if (node.children.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'folder-tree-empty';
+                empty.textContent = '没有可显示的内容';
+                childrenContainer.appendChild(empty);
+            } else {
+                node.children.forEach(childNode => {
+                    childrenContainer.appendChild(renderTreeNode(childNode, depth + 1));
+                });
+            }
+
+            wrapper.appendChild(childrenContainer);
+        }
+
+        return wrapper;
+    }
+
+    /**
+     * 获取文件夹图标
+     */
+    function getFolderIcon(isExpanded) {
+        const folderClass = isExpanded ? 'open' : 'closed';
+        return `
+            <svg class="folder-file-icon folder ${folderClass}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"></path>
+            </svg>
+        `;
     }
 
     /**
@@ -3695,7 +3911,9 @@
             const fileHandle = file.handle;
             const fileData = await fileHandle.getFile();
             const content = await fileData.text();
-            state.currentDocumentDirHandle = state.folderHandle;
+            state.currentDocumentDirHandle = file.parentHandle || state.folderHandle;
+            state.currentSelectedFilePath = file.path;
+            renderFileList();
 
             // 加载到编辑器
             elements.codeInput.value = content;

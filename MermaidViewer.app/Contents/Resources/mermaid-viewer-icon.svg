@@ -1,0 +1,67 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1120"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="tailGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#22c55e"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.3" r="0.7">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="64" y="64" width="896" height="896" rx="220" fill="url(#bgGradient)"/>
+  <rect x="64" y="64" width="896" height="896" rx="220"
+        fill="url(#glow)" style="mix-blend-mode:screen"/>
+
+  <g opacity="0.16" stroke="#1e293b" stroke-width="10">
+    <circle cx="280" cy="320" r="22" fill="#0f172a"/>
+    <circle cx="460" cy="240" r="18" fill="#0f172a"/>
+    <circle cx="700" cy="320" r="20" fill="#0f172a"/>
+    <circle cx="720" cy="560" r="22" fill="#0f172a"/>
+    <circle cx="360" cy="640" r="20" fill="#0f172a"/>
+
+    <line x1="280" y1="320" x2="460" y2="240"/>
+    <line x1="460" y1="240" x2="700" y2="320"/>
+    <line x1="700" y1="320" x2="720" y2="560"/>
+    <line x1="720" y1="560" x2="360" y2="640"/>
+    <line x1="360" y1="640" x2="280" y2="320"/>
+  </g>
+
+  <g transform="translate(0,40)">
+    <path d="M 310 620
+             C 390 540, 470 460, 540 390
+             C 610 320, 660 270, 700 250
+             C 735 233, 770 232, 800 250
+             C 770 285, 735 320, 700 345
+             C 670 367, 635 385, 600 400
+             C 560 420, 520 450, 480 490
+             C 430 540, 395 585, 360 640
+             C 340 670, 320 690, 300 705
+             C 285 685, 280 655, 285 630
+             C 290 650, 300 640, 310 620 Z"
+          fill="url(#tailGradient)"/>
+
+    <path d="M 700 250
+             C 660 215, 640 180, 635 150
+             C 675 155, 710 170, 740 195
+             C 765 215, 780 235, 790 255
+             C 760 240, 730 240, 700 250 Z"
+          fill="#22d3ee"/>
+
+    <path d="M 700 250
+             C 720 210, 735 180, 745 150
+             C 775 165, 800 190, 820 220
+             C 835 245, 845 270, 848 295
+             C 820 270, 785 260, 750 255
+             C 730 252, 715 250, 700 250 Z"
+          fill="#2dd4bf"/>
+  </g>
+
+  <ellipse cx="420" cy="360" rx="180" ry="70" fill="#e0f2fe" opacity="0.10"/>
+</svg>
+

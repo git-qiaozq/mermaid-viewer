@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# 进入项目根目录（从 MacOS/ 往上三级: MacOS -> Contents -> MermaidViewer.app -> 项目根目录）
+PROJECT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+cd "$PROJECT_DIR"
+
+# 启动服务
+nohup python3 start.pyw >/dev/null 2>&1 &
+
+exit 0
+
